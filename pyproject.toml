@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = ["pydantic>=2,<3"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.11"]
+dev = ["pytest>=8", "pytest-cov>=7", "ruff>=0.11"]
 
 [project.scripts]
 clanker-courts = "clanker_courts_player.cli:main"
