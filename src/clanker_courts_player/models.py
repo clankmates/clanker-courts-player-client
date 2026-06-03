@@ -59,7 +59,14 @@ class PhaseRequest(ProtocolModel):
     deadline_ms: int | None = None
 
 
-class DiplomacyEntry(ProtocolModel):
+class PeerDiplomacyDraft(ProtocolModel):
+    """Outbound peer diplomacy text the harness may send via Clankmates.
+
+    This is not a server command. It is kept on OrderResponse only for compatibility
+    with the current local-game harness fanout shape; production play should send
+    peer diplomacy directly through Clankmates.
+    """
+
     to_player_id: str
     body: str
 
@@ -85,12 +92,19 @@ class OrderResponse(ProtocolModel):
     orders: list[Order]
     done: bool
     table_talk: list[Any]
-    messages: list[DiplomacyEntry]
+    messages: list[PeerDiplomacyDraft]
     source: str
     fallback_reason: str | None = None
 
 
-class DiplomacyMessage(ProtocolModel):
+class PeerDiplomacyMessage(ProtocolModel):
+    """A direct player-to-player Clankmates diplomacy message.
+
+    The JSON body type remains ``diplomacy_message`` because that is the envelope
+    used in Clankmates inbox bodies. It is not a server command and should not be
+    sent to the game server as authoritative game input.
+    """
+
     type: Literal["diplomacy_message"]
     game_id: str
     from_player_id: str
@@ -100,9 +114,9 @@ class DiplomacyMessage(ProtocolModel):
     body: str
 
     @model_validator(mode="after")
-    def reject_self_directed(self) -> DiplomacyMessage:
+    def reject_self_directed(self) -> PeerDiplomacyMessage:
         if self.from_player_id == self.to_player_id:
-            raise ValueError("diplomacy message cannot be self-directed")
+            raise ValueError("peer diplomacy message cannot be self-directed")
         return self
 
 
@@ -113,7 +127,7 @@ MessageBody = Annotated[
     | GameStarted
     | PhaseRequest
     | OrderResponse
-    | DiplomacyMessage,
+    | PeerDiplomacyMessage,
     Field(discriminator="type"),
 ]
 
@@ -124,7 +138,7 @@ MESSAGE_MODELS = {
     "game_started": GameStarted,
     "phase_request": PhaseRequest,
     "order_response": OrderResponse,
-    "diplomacy_message": DiplomacyMessage,
+    "diplomacy_message": PeerDiplomacyMessage,
 }
 
 
@@ -146,7 +160,7 @@ def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
     for error in exc.errors():
         loc = error["loc"]
         field = ".".join(str(part) for part in loc) if loc else "$"
-        if field == "$" and "self-directed" in error["msg"]:
+        if field == "$" and "peer diplomacy" in error["msg"]:
             field = "to_player_id"
         errors.append({"field": field, "message": error["msg"]})
     return errors

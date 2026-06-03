@@ -5,11 +5,11 @@ import pytest
 
 from clanker_courts_player.errors import StructuredValidationError
 from clanker_courts_player.models import (
-    DiplomacyMessage,
     GameStarted,
     JoinAck,
     JoinGame,
     OrderResponse,
+    PeerDiplomacyMessage,
     PhaseRequest,
     parse_message_body,
 )
@@ -26,7 +26,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
         ("phase_request_reinforcement.json", PhaseRequest),
         ("phase_request_movement.json", PhaseRequest),
         ("order_response.json", OrderResponse),
-        ("diplomacy_message.json", DiplomacyMessage),
+        ("peer_diplomacy_message.json", PeerDiplomacyMessage),
     ],
 )
 def test_valid_fixtures_parse_and_round_trip_preserving_unknown_fields(fixture_name, model):

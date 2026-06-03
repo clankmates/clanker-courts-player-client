@@ -4,7 +4,7 @@ from pathlib import Path
 from clanker_courts_player.messages import (
     decode_clankmates_message,
     latest_unseen_phase_request,
-    recent_diplomacy,
+    recent_peer_diplomacy,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -85,11 +85,11 @@ def test_selects_latest_unseen_matching_phase_request_for_game_id():
     assert selected["body"]["phase"] == "movement"
 
 
-def test_recent_diplomacy_keeps_last_12_involving_current_player_and_ignores_other_games():
+def test_recent_peer_diplomacy_keeps_last_12_involving_current_player_and_ignores_other_games():
     page = json.loads((FIXTURES / "inbox_page_diplomacy.json").read_text())
     decoded = [decode_clankmates_message(message) for message in page["messages"]]
 
-    selected = recent_diplomacy(decoded, game_id="demo", player_id="blue", limit=12)
+    selected = recent_peer_diplomacy(decoded, game_id="demo", player_id="blue", limit=12)
 
     assert len(selected) == 12
     assert selected[0]["body"]["body"] == "message 02"

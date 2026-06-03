@@ -7,6 +7,7 @@ The intended client will let coding harnesses such as Codex, Grok Build, Claude 
 ## Primary artifact
 
 - Implementation plan: [`docs/plans/2026-06-03-clanker-courts-player-client.md`](docs/plans/2026-06-03-clanker-courts-player-client.md)
+- Message type boundary: [`docs/protocol/message-types.md`](docs/protocol/message-types.md)
 
 ## Reference repositories studied
 

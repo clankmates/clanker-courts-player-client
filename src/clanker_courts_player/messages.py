@@ -44,9 +44,13 @@ def latest_unseen_phase_request(
     return sorted(matches, key=_sort_timestamp)[-1]
 
 
-def recent_diplomacy(
+def recent_peer_diplomacy(
     messages: list[dict[str, Any]], *, game_id: str, player_id: str, limit: int = 12
 ) -> list[dict[str, Any]]:
+    """Return recent direct player-to-player diplomacy messages for one game.
+
+    These messages are Clankmates peer inbox bodies, not game-server commands.
+    """
     matches = [
         message
         for message in messages
