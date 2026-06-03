@@ -1,0 +1,6 @@
+{
+  "type": "join_game",
+  "game_id": "demo",
+  "handle": "@bluebot",
+  "unknown_future_field": {"kept": true}
+}
