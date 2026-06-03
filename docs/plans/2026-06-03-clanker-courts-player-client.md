@@ -585,14 +585,20 @@ The skill must explicitly separate strategy prompts from callable tools. The pro
 
 ### Local / Sandbox Testing
 
+Testing should graduate from fixtures to local live servers as soon as the client has enough transport surface to exercise them. Do not wait until the final end-to-end stage to discover protocol or `clankm` compatibility drift.
+
 Levels:
 
 1. Pure Python fixtures:
    - Test parsing, state, summaries, legal actions, builders, promise ledger, and fallback.
+   - Primary coverage for stages 0-3.
 2. Fake `clankm` adapter:
    - Test preflight, polling, joining, replying, and archive behavior with a fake executable or monkeypatched runner.
-3. Optional local Clankmates:
+   - Primary coverage for stages 2-4 and duplicate/idempotency behavior.
+3. Local Clankmates smoke, beginning at Stage 2:
    - Use `http://localhost:4000`.
+   - Purpose: verify the adapter, auth/profile setup, inbox shape, send/reply JSON bodies, pagination/status flags, and body decoding against the real local Clankmates server.
+   - This should be a documented, optional integration job because local Clankmates/auth may not exist in every CI or harness environment.
    - Commands:
 
 ```bash
@@ -601,8 +607,16 @@ clankm --profile ccf4_bluebot auth whoami --json
 clankm --profile ccf4_bluebot inbox list --status all --json
 ```
 
-4. Optional reference server comparison:
+4. Local Clanker Courts server plus local Clankmates, beginning at Stage 4:
+   - Purpose: verify real `join_game`, `join_ack`, `game_started`, and `phase_request` flow through Clankmates rather than only through fixtures.
+   - Stage 4 should introduce the first real local join/poll smoke once the server can be started and pointed at local Clankmates.
+   - Stages 5-8 should rerun local smoke after each protocol/parser/legality layer to compare real reports with fixtures and update fixtures from captured raw messages when safe.
+   - Stage 11 should add live `submit` smoke for a single phase with conservative/fallback orders.
+   - Stage 12 should add `play-loop --once` against the local server.
+   - Stage 15 remains the full end-to-end local run across join, poll, summarize, validate, submit, and one-loop play.
+5. Optional reference server comparison:
    - When `/home/hermes/clanker-client-planning-work/refs/clanker-courts-server` is available, run its public harness or contract fixtures to compare message handling. Production client code must not import server modules.
+   - Sandbox tests may start the reference server as a subprocess or use its public CLI/scripts, but must treat it as a black box and communicate through the same public protocol/Clankmates path as a real player.
 
 ## 5. Staged Implementation Plan
 
@@ -674,6 +688,7 @@ TDD steps:
    - `["clankm", "--profile", profile, "inbox", "reply", thread_id, "--body", json_body, "--json"]`
 3. Test non-zero exit and malformed JSON produce structured errors.
 4. Implement adapter and `preflight` CLI.
+5. If local Clankmates is available, run a Stage 2 smoke against `http://localhost:4000` to verify `clankm` auth/profile/inbox payload shape before building game-specific flow.
 
 Commands:
 
@@ -735,6 +750,7 @@ TDD steps:
 
 3. Test join records `server.thread_id`.
 4. Test `poll` reads known thread, archives messages, processes `join_ack` and `game_started`, records `player_id`.
+5. If local Clankmates and the Clanker Courts server are available, run the first local live smoke: start both servers, create/auth local bot profiles, send `join_game`, poll until `join_ack` or `game_started`, and archive the captured raw messages as optional sandbox fixtures.
 
 Commands:
 
