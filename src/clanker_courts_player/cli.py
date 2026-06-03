@@ -55,6 +55,49 @@ def _preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+def _join(args: argparse.Namespace) -> int:
+    from .clankmates import ClankmatesClient, ClankmatesError
+    from .session import join_game
+    from .state_store import StateStore
+
+    client = ClankmatesClient()
+    try:
+        payload = join_game(
+            client=client,
+            profile=args.profile,
+            base_url=args.base_url,
+            server=args.server,
+            game_id=args.game_id,
+            store=StateStore(args.state),
+        )
+    except ClankmatesError as exc:
+        _print_json(exc.to_dict())
+        return 1
+    except ValueError as exc:
+        _print_json({"ok": False, "error": str(exc)})
+        return 1
+    _print_json(payload)
+    return 0
+
+
+def _poll(args: argparse.Namespace) -> int:
+    from .clankmates import ClankmatesClient, ClankmatesError
+    from .session import poll_server_thread
+    from .state_store import StateStore
+
+    client = ClankmatesClient()
+    try:
+        payload = poll_server_thread(client=client, store=StateStore(args.state), limit=args.limit)
+    except ClankmatesError as exc:
+        _print_json(exc.to_dict())
+        return 1
+    except (OSError, ValueError) as exc:
+        _print_json({"ok": False, "error": str(exc)})
+        return 1
+    _print_json(payload)
+    return 0
+
+
 def _placeholder(command: str):
     def run(_args: argparse.Namespace) -> int:
         _print_json({"ok": False, "command": command, "error": "not implemented"})
@@ -75,6 +118,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     for command in COMMANDS:
         if command == "preflight":
+            continue
+        if command == "join":
+            join = subparsers.add_parser("join", help="join a Clanker Courts game")
+            join.add_argument("--profile", required=True)
+            join.add_argument("--base-url", required=True)
+            join.add_argument("--server", required=True)
+            join.add_argument("--game-id", required=True)
+            join.add_argument("--state", required=True)
+            join.set_defaults(func=_join)
+            continue
+        if command == "poll":
+            poll = subparsers.add_parser("poll", help="poll the joined server thread")
+            poll.add_argument("--state", required=True)
+            poll.add_argument("--limit", type=int, default=25)
+            poll.set_defaults(func=_poll)
             continue
         subparser = subparsers.add_parser(command, help=f"{command} placeholder")
         subparser.set_defaults(func=_placeholder(command))
