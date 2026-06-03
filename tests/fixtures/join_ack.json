@@ -1,0 +1,8 @@
+{
+  "type": "join_ack",
+  "game_id": "demo",
+  "status": "waiting",
+  "joined": 1,
+  "required": 3,
+  "unknown_future_field": {"kept": true}
+}

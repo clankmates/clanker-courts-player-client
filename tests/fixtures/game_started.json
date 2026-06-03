@@ -1,0 +1,10 @@
+{
+  "type": "game_started",
+  "game_id": "demo",
+  "player_id": "blue",
+  "ruleset_id": "clanker-courts-v9",
+  "reports": [{"type": "setup_report", "player_id": "blue"}],
+  "communication_rules": {"private_diplomacy": true},
+  "status": {"turn": 1},
+  "unknown_future_field": {"kept": true}
+}
