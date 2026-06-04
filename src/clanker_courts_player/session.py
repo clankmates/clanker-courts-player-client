@@ -301,9 +301,7 @@ def _event(decoded: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _parse_error_event(
-    decoded: dict[str, Any], exc: StructuredValidationError
-) -> dict[str, Any]:
+def _parse_error_event(decoded: dict[str, Any], exc: StructuredValidationError) -> dict[str, Any]:
     return {
         "type": "parse_error",
         "message_id": decoded.get("message_id"),

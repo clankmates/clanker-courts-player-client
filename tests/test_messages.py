@@ -50,9 +50,7 @@ def test_decode_timestamp_variants_from_top_level_and_attributes():
     }
 
     assert decode_clankmates_message(top_level_sent_at)["timestamp"] == "2026-06-03T00:02:00Z"
-    assert (
-        decode_clankmates_message(attributes_sent_at)["timestamp"] == "2026-06-03T00:03:00Z"
-    )
+    assert decode_clankmates_message(attributes_sent_at)["timestamp"] == "2026-06-03T00:03:00Z"
 
 
 def test_decode_falls_back_to_top_level_body_when_attributes_body_missing():

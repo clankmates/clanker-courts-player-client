@@ -438,9 +438,7 @@ def test_poll_preserves_chronological_events_and_applies_latest_phase_request(
         "thread_id": "thread-server",
         "attributes": {
             "sent_at": "2026-06-03T00:00:30Z",
-            "body": _json_body(
-                {"type": "join_rejected", "game_id": "demo", "reason": "game full"}
-            ),
+            "body": _json_body({"type": "join_rejected", "game_id": "demo", "reason": "game full"}),
         },
     }
     older_phase_request = {
