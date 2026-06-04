@@ -4,7 +4,15 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-TIMESTAMP_FIELDS = ("created_at", "createdAt", "inserted_at", "insertedAt", "timestamp")
+TIMESTAMP_FIELDS = (
+    "created_at",
+    "createdAt",
+    "inserted_at",
+    "insertedAt",
+    "sent_at",
+    "sentAt",
+    "timestamp",
+)
 
 
 def decode_clankmates_message(message: dict[str, Any]) -> dict[str, Any]:
@@ -66,14 +74,17 @@ def recent_peer_diplomacy(
 
 
 def _message_timestamp(message: dict[str, Any]) -> str | None:
-    for field in TIMESTAMP_FIELDS:
-        value = message.get(field)
-        if isinstance(value, str):
-            return value
+    for source in (message, message.get("attributes")):
+        if not isinstance(source, dict):
+            continue
+        for field in TIMESTAMP_FIELDS:
+            value = source.get(field)
+            if isinstance(value, str):
+                return value
     return None
 
 
-def _sort_timestamp(message: dict[str, Any]) -> datetime:
+def sort_timestamp(message: dict[str, Any]) -> datetime:
     value = message.get("timestamp")
     if not isinstance(value, str):
         return datetime.min.replace(tzinfo=UTC)
@@ -85,3 +96,7 @@ def _sort_timestamp(message: dict[str, Any]) -> datetime:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+def _sort_timestamp(message: dict[str, Any]) -> datetime:
+    return sort_timestamp(message)

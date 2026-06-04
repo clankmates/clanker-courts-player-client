@@ -33,6 +33,28 @@ def test_decode_body_json_and_plain_text_and_timestamp_variants():
     assert decoded_text["timestamp"] == "2026-06-03T00:01:00Z"
 
 
+def test_decode_timestamp_variants_from_top_level_and_attributes():
+    top_level_sent_at = {
+        "id": "m-sent-at",
+        "thread_id": "t1",
+        "sent_at": "2026-06-03T00:02:00Z",
+        "attributes": {"body": '{"type":"phase_request","game_id":"g"}'},
+    }
+    attributes_sent_at = {
+        "id": "m-attributes-sent-at",
+        "thread_id": "t1",
+        "attributes": {
+            "sentAt": "2026-06-03T00:03:00Z",
+            "body": '{"type":"phase_request","game_id":"g"}',
+        },
+    }
+
+    assert decode_clankmates_message(top_level_sent_at)["timestamp"] == "2026-06-03T00:02:00Z"
+    assert (
+        decode_clankmates_message(attributes_sent_at)["timestamp"] == "2026-06-03T00:03:00Z"
+    )
+
+
 def test_decode_falls_back_to_top_level_body_when_attributes_body_missing():
     message = {
         "id": "m-top",

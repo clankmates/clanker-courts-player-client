@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from .messages import decode_clankmates_message
+from .errors import StructuredValidationError
+from .messages import decode_clankmates_message, sort_timestamp
 from .models import parse_message_body
 from .state_store import StateStore
 
@@ -46,6 +47,8 @@ def join_game(
 
 
 def poll_server_thread(*, client: Any, store: StateStore, limit: int) -> dict[str, Any]:
+    if limit < 1:
+        raise ValueError("poll --limit must be >= 1")
     state = store.load()
     game_id = state.get("game_id")
     profile = _nested_str(state, "clankmates", "profile")
@@ -63,9 +66,16 @@ def poll_server_thread(*, client: Any, store: StateStore, limit: int) -> dict[st
     seen = state.setdefault("seen", {})
     seen_message_ids = list(seen.get("message_ids") or [])
     seen_set = {message_id for message_id in seen_message_ids if isinstance(message_id, str)}
-    decoded_matching: list[dict[str, Any]] = []
+    seen_request_ids = list(seen.get("request_ids") or [])
+    seen_request_set = {
+        request_id for request_id in seen_request_ids if isinstance(request_id, str)
+    }
+    decoded_candidates: list[dict[str, Any]] = []
+    decoded_processed: list[dict[str, Any]] = []
     ignored_duplicates: list[str] = []
+    ignored_duplicate_request_ids: list[str] = []
     ignored_unrelated: list[str] = []
+    parse_error_events: list[dict[str, Any]] = []
 
     for raw_message in messages:
         store.append_raw_message(raw_message)
@@ -81,19 +91,40 @@ def poll_server_thread(*, client: Any, store: StateStore, limit: int) -> dict[st
             if isinstance(message_id, str):
                 ignored_unrelated.append(message_id)
             continue
-        if body.get("type") not in {"join_ack", "game_started", "phase_request"}:
+        if body.get("type") not in {"join_ack", "join_rejected", "game_started", "phase_request"}:
             continue
-        decoded_matching.append(decoded)
+        try:
+            parsed = parse_message_body(body).model_dump()
+        except StructuredValidationError as exc:
+            parse_error_events.append(_parse_error_event(decoded, exc))
+            continue
+        decoded_candidates.append({**decoded, "parsed_body": parsed})
+
+    for decoded in sorted(decoded_candidates, key=sort_timestamp):
+        parsed = decoded["parsed_body"]
+        message_id = decoded.get("message_id")
+        if parsed.get("type") == "phase_request":
+            request_id = parsed.get("request_id")
+            if isinstance(request_id, str) and request_id in seen_request_set:
+                ignored_duplicate_request_ids.append(request_id)
+                continue
+            if isinstance(request_id, str):
+                seen_request_set.add(request_id)
+                seen_request_ids.append(request_id)
+        decoded_processed.append(decoded)
         if isinstance(message_id, str):
             seen_set.add(message_id)
             seen_message_ids.append(message_id)
 
-    events = _process_decoded_events(state, decoded_matching)
+    events = sorted(
+        [*parse_error_events, *_process_decoded_events(state, decoded_processed)],
+        key=sort_timestamp,
+    )
     for event in events:
         store.append_event(event)
 
     seen["message_ids"] = seen_message_ids
-    seen.setdefault("request_ids", [])
+    seen["request_ids"] = seen_request_ids
     state["updated_at"] = _now_iso()
     store.save(state)
 
@@ -101,9 +132,10 @@ def poll_server_thread(*, client: Any, store: StateStore, limit: int) -> dict[st
         "ok": True,
         "game_id": game_id,
         "thread_id": thread_id,
-        "processed": len(decoded_matching),
+        "processed": len(decoded_processed),
         "ignored": {
             "duplicate_message_ids": ignored_duplicates,
+            "duplicate_request_ids": ignored_duplicate_request_ids,
             "unrelated_game_ids": ignored_unrelated,
         },
         "events": events,
@@ -158,49 +190,40 @@ def extract_thread_id(send_response: dict[str, Any]) -> str | None:
 def _process_decoded_events(
     state: dict[str, Any], decoded_messages: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    join_ack_messages: list[dict[str, Any]] = []
-    game_started_messages: list[dict[str, Any]] = []
     phase_request_messages: list[dict[str, Any]] = []
-
-    for decoded in sorted(decoded_messages, key=lambda message: message.get("timestamp") or ""):
-        body = decoded.get("body")
-        if not isinstance(body, dict):
-            continue
-        try:
-            parsed = parse_message_body(body).model_dump()
-        except Exception:
-            continue
-        message_type = parsed.get("type")
-        if message_type == "join_ack":
-            join_ack_messages.append({**decoded, "parsed_body": parsed})
-        elif message_type == "game_started":
-            game_started_messages.append({**decoded, "parsed_body": parsed})
-        elif message_type == "phase_request":
-            phase_request_messages.append({**decoded, "parsed_body": parsed})
-
     events: list[dict[str, Any]] = []
 
-    for decoded in join_ack_messages:
+    for decoded in sorted(decoded_messages, key=sort_timestamp):
         body = decoded["parsed_body"]
-        state["join"] = {
-            "status": body.get("status"),
-            "joined": body.get("joined"),
-            "required": body.get("required"),
-        }
-        events.append(_event(decoded, body))
-
-    for decoded in game_started_messages:
-        body = decoded["parsed_body"]
-        _apply_game_started(state, body)
+        message_type = body.get("type")
+        if message_type == "join_ack":
+            _apply_join_ack(state, body)
+        elif message_type == "join_rejected":
+            _apply_join_rejected(state, body)
+        elif message_type == "game_started":
+            _apply_game_started(state, body)
+        elif message_type == "phase_request":
+            phase_request_messages.append(decoded)
         events.append(_event(decoded, body))
 
     latest_phase = phase_request_messages[-1] if phase_request_messages else None
     if latest_phase is not None:
         body = latest_phase["parsed_body"]
         _apply_phase_request(state, body)
-        events.append(_event(latest_phase, body))
 
     return events
+
+
+def _apply_join_ack(state: dict[str, Any], body: dict[str, Any]) -> None:
+    state["join"] = {
+        "status": body.get("status"),
+        "joined": body.get("joined"),
+        "required": body.get("required"),
+    }
+
+
+def _apply_join_rejected(state: dict[str, Any], body: dict[str, Any]) -> None:
+    state["join"] = {"status": "rejected", "reason": body.get("reason")}
 
 
 def _apply_game_started(state: dict[str, Any], body: dict[str, Any]) -> None:
@@ -275,6 +298,18 @@ def _event(decoded: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
         "thread_id": decoded.get("thread_id"),
         "timestamp": decoded.get("timestamp"),
         "body": body,
+    }
+
+
+def _parse_error_event(
+    decoded: dict[str, Any], exc: StructuredValidationError
+) -> dict[str, Any]:
+    return {
+        "type": "parse_error",
+        "message_id": decoded.get("message_id"),
+        "thread_id": decoded.get("thread_id"),
+        "timestamp": decoded.get("timestamp"),
+        "errors": exc.errors,
     }
 
 

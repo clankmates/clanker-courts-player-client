@@ -73,7 +73,7 @@ def _join(args: argparse.Namespace) -> int:
     except ClankmatesError as exc:
         _print_json(exc.to_dict())
         return 1
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         _print_json({"ok": False, "error": str(exc)})
         return 1
     _print_json(payload)

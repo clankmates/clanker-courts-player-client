@@ -9,6 +9,30 @@ def _json_body(body):
     return json.dumps(body, separators=(",", ":"), sort_keys=True)
 
 
+def _write_joined_state(path, *, seen=None):
+    path.parent.mkdir()
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "game_id": "demo",
+                "server": {
+                    "recipient": "@courts-server",
+                    "thread_id": "thread-server",
+                    "base_url": "http://localhost:4000",
+                },
+                "clankmates": {"profile": "local-blue", "handle": "bluebot"},
+                "seen": seen or {"message_ids": [], "request_ids": []},
+                "reports": [],
+                "submissions": [],
+                "diplomacy": {"sent": [], "received": []},
+                "promises": {"made": [], "received": [], "resolved": []},
+            }
+        )
+        + "\n"
+    )
+
+
 @pytest.mark.parametrize(
     ("send_response", "expected_thread_id"),
     [
@@ -266,6 +290,7 @@ def test_poll_archives_raw_messages_and_updates_state_from_server_events(
         "join_ack",
         "game_started",
         "phase_request",
+        "phase_request",
     ]
     assert state["join"] == {"status": "waiting", "joined": 1, "required": 3}
     assert state["player"]["player_id"] == "blue"
@@ -298,3 +323,219 @@ def test_poll_requires_join_state_with_server_thread(tmp_path, capsys):
     assert exit_code == 1
     assert payload["ok"] is False
     assert "server.thread_id" in payload["error"]
+
+
+def test_poll_reports_parse_errors_without_marking_schema_invalid_messages_seen(
+    tmp_path, monkeypatch, capsys
+):
+    state_path = tmp_path / "demo" / "state.json"
+    _write_joined_state(state_path, seen={"message_ids": [], "request_ids": ["req-duplicate"]})
+    invalid_phase_request = {
+        "id": "m-invalid",
+        "thread_id": "thread-server",
+        "created_at": "2026-06-03T00:00:00Z",
+        "attributes": {
+            "body": _json_body(
+                {
+                    "type": "phase_request",
+                    "game_id": "demo",
+                    "request_id": "req-invalid",
+                    "player_id": "blue",
+                    "turn": 1,
+                    "phase": "planning",
+                    "status": {},
+                    "reports": [],
+                }
+            )
+        },
+    }
+    duplicate_request = {
+        "id": "m-duplicate-request",
+        "thread_id": "thread-server",
+        "created_at": "2026-06-03T00:01:00Z",
+        "attributes": {
+            "body": _json_body(
+                {
+                    "type": "phase_request",
+                    "game_id": "demo",
+                    "request_id": "req-duplicate",
+                    "player_id": "blue",
+                    "turn": 1,
+                    "phase": "movement",
+                    "status": {},
+                    "reports": [],
+                }
+            )
+        },
+    }
+    valid_phase_request = {
+        "id": "m-valid",
+        "thread_id": "thread-server",
+        "created_at": "2026-06-03T00:02:00Z",
+        "attributes": {
+            "body": _json_body(
+                {
+                    "type": "phase_request",
+                    "game_id": "demo",
+                    "request_id": "req-valid",
+                    "player_id": "blue",
+                    "turn": 1,
+                    "phase": "movement",
+                    "status": {},
+                    "reports": [],
+                }
+            )
+        },
+    }
+
+    class FakeClient:
+        def show_thread(self, profile, thread_id, *, limit=10, cursor=None):
+            return {"messages": [invalid_phase_request, duplicate_request, valid_phase_request]}
+
+    import clanker_courts_player.clankmates as clankmates_module
+
+    monkeypatch.setattr(clankmates_module, "ClankmatesClient", FakeClient)
+
+    exit_code = main(["poll", "--state", str(state_path)])
+
+    payload = json.loads(capsys.readouterr().out)
+    state = json.loads(state_path.read_text())
+    assert exit_code == 0
+    assert payload["processed"] == 1
+    assert payload["ignored"]["duplicate_request_ids"] == ["req-duplicate"]
+    assert [event["type"] for event in payload["events"]] == ["parse_error", "phase_request"]
+    assert payload["events"][0]["message_id"] == "m-invalid"
+    assert state["seen"]["message_ids"] == ["m-valid"]
+    assert state["seen"]["request_ids"] == ["req-duplicate", "req-valid"]
+
+
+def test_poll_preserves_chronological_events_and_applies_latest_phase_request(
+    tmp_path, monkeypatch, capsys
+):
+    state_path = tmp_path / "demo" / "state.json"
+    _write_joined_state(state_path)
+    newer_phase_request = {
+        "id": "m-new-phase",
+        "thread_id": "thread-server",
+        "timestamp": "2026-06-03T00:00:00+00:00",
+        "attributes": {
+            "body": _json_body(
+                {
+                    "type": "phase_request",
+                    "game_id": "demo",
+                    "request_id": "req-new",
+                    "player_id": "blue",
+                    "turn": 2,
+                    "phase": "movement",
+                    "status": {"turn": 2, "phase": "movement"},
+                    "reports": [{"type": "movement_visibility_report", "turn": 2}],
+                }
+            )
+        },
+    }
+    join_rejected = {
+        "id": "m-rejected",
+        "thread_id": "thread-server",
+        "attributes": {
+            "sent_at": "2026-06-03T00:00:30Z",
+            "body": _json_body(
+                {"type": "join_rejected", "game_id": "demo", "reason": "game full"}
+            ),
+        },
+    }
+    older_phase_request = {
+        "id": "m-old-phase",
+        "thread_id": "thread-server",
+        "sentAt": "2026-06-02T23:59:59-00:00",
+        "attributes": {
+            "body": _json_body(
+                {
+                    "type": "phase_request",
+                    "game_id": "demo",
+                    "request_id": "req-old",
+                    "player_id": "blue",
+                    "turn": 1,
+                    "phase": "reinforcement",
+                    "status": {"turn": 1, "phase": "reinforcement"},
+                    "reports": [{"type": "reinforcement_report", "turn": 1}],
+                }
+            )
+        },
+    }
+
+    class FakeClient:
+        def show_thread(self, profile, thread_id, *, limit=10, cursor=None):
+            return {"messages": [newer_phase_request, join_rejected, older_phase_request]}
+
+    import clanker_courts_player.clankmates as clankmates_module
+
+    monkeypatch.setattr(clankmates_module, "ClankmatesClient", FakeClient)
+
+    exit_code = main(["poll", "--state", str(state_path)])
+
+    payload = json.loads(capsys.readouterr().out)
+    state = json.loads(state_path.read_text())
+    assert exit_code == 0
+    assert [event["message_id"] for event in payload["events"]] == [
+        "m-old-phase",
+        "m-new-phase",
+        "m-rejected",
+    ]
+    assert [event["type"] for event in payload["events"]] == [
+        "phase_request",
+        "phase_request",
+        "join_rejected",
+    ]
+    assert state["phase"]["request_id"] == "req-new"
+    assert state["reports"] == [{"type": "movement_visibility_report", "turn": 2}]
+    assert state["join"] == {"status": "rejected", "reason": "game full"}
+    assert state["seen"]["request_ids"] == ["req-old", "req-new"]
+
+
+def test_poll_rejects_limit_less_than_one(tmp_path, monkeypatch, capsys):
+    state_path = tmp_path / "demo" / "state.json"
+    _write_joined_state(state_path)
+
+    class FakeClient:
+        def show_thread(self, profile, thread_id, *, limit=10, cursor=None):
+            raise AssertionError("poll should validate limit before fetching")
+
+    import clanker_courts_player.clankmates as clankmates_module
+
+    monkeypatch.setattr(clankmates_module, "ClankmatesClient", FakeClient)
+
+    exit_code = main(["poll", "--state", str(state_path), "--limit", "0"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload == {"ok": False, "error": "poll --limit must be >= 1"}
+
+
+def test_join_oserror_returns_structured_json(monkeypatch, capsys, tmp_path):
+    class FakeClient:
+        def whoami(self, profile):
+            raise OSError("clankm unavailable")
+
+    import clanker_courts_player.clankmates as clankmates_module
+
+    monkeypatch.setattr(clankmates_module, "ClankmatesClient", FakeClient)
+
+    exit_code = main(
+        [
+            "join",
+            "--profile",
+            "local-blue",
+            "--base-url",
+            "http://localhost:4000",
+            "--server",
+            "@courts-server",
+            "--game-id",
+            "demo",
+            "--state",
+            str(tmp_path / "state.json"),
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert payload == {"ok": False, "error": "clankm unavailable"}
