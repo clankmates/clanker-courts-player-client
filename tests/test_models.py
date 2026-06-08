@@ -5,12 +5,17 @@ import pytest
 
 from clanker_courts_player.errors import StructuredValidationError
 from clanker_courts_player.models import (
-    GameStarted,
+    DonePhase,
     JoinAck,
     JoinGame,
+    MovementVisibilityReport,
+    OrderAccepted,
     OrderResponse,
     PeerDiplomacyMessage,
-    PhaseRequest,
+    ReadyCheck,
+    ReadyToStart,
+    ReinforcementReport,
+    SetupReport,
     parse_message_body,
 )
 
@@ -22,10 +27,14 @@ FIXTURES = Path(__file__).parent / "fixtures"
     [
         ("join_game.json", JoinGame),
         ("join_ack.json", JoinAck),
-        ("game_started.json", GameStarted),
-        ("phase_request_reinforcement.json", PhaseRequest),
-        ("phase_request_movement.json", PhaseRequest),
+        ("ready_check.json", ReadyCheck),
+        ("ready_to_start.json", ReadyToStart),
+        ("setup_report.json", SetupReport),
+        ("reinforcement_report.json", ReinforcementReport),
+        ("movement_visibility_report.json", MovementVisibilityReport),
         ("order_response.json", OrderResponse),
+        ("done_phase.json", DonePhase),
+        ("order_accepted.json", OrderAccepted),
         ("peer_diplomacy_message.json", PeerDiplomacyMessage),
     ],
 )
@@ -43,29 +52,18 @@ def test_valid_fixtures_parse_and_round_trip_preserving_unknown_fields(fixture_n
     ("payload", "expected_field"),
     [
         (
-            {
-                "type": "phase_request",
-                "game_id": "g",
-                "request_id": "r",
-                "player_id": "blue",
-                "turn": 1,
-                "phase": "trade",
-                "status": {},
-                "reports": [],
-            },
-            "phase",
+            {"type": "join_game", "game_id": "g", "handle": "@legacy"},
+            "handle",
         ),
         (
             {
-                "type": "phase_request",
-                "request_id": "r",
+                "type": "order_response",
+                "game_id": "g",
+                "phase_id": "g:turn-01:movement",
                 "player_id": "blue",
-                "turn": 1,
-                "phase": "movement",
-                "status": {},
-                "reports": [],
+                "orders": [],
             },
-            "game_id",
+            "player_id",
         ),
         (
             {
@@ -88,6 +86,17 @@ def test_invalid_messages_fail_with_structured_errors(payload, expected_field):
     error = exc_info.value.to_dict()
     assert error["ok"] is False
     assert error["errors"][0]["field"] == expected_field
+
+
+@pytest.mark.parametrize("message_type", ["game_started", "phase_request"])
+def test_legacy_server_messages_are_unknown(message_type):
+    with pytest.raises(StructuredValidationError) as exc_info:
+        parse_message_body({"type": message_type, "game_id": "g"})
+
+    assert exc_info.value.to_dict()["errors"][0] == {
+        "field": "type",
+        "message": "unknown message type",
+    }
 
 
 def test_non_object_json_fails_with_structured_error():

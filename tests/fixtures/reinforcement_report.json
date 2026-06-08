@@ -1,0 +1,11 @@
+{
+  "type": "reinforcement_report",
+  "game_id": "demo",
+  "phase_id": "demo:turn-01:reinforcement",
+  "turn": 1,
+  "phase": "reinforcement",
+  "reinforcements_available": 1,
+  "controlled_cities": [{"location_id": "B", "name": "Blue Capital", "troops": 5}],
+  "reinforcement_clock_ms": 60000,
+  "unknown_future_field": {"kept": true}
+}

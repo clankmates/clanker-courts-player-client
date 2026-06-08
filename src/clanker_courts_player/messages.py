@@ -28,16 +28,19 @@ def decode_clankmates_message(message: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def latest_unseen_phase_request(
-    messages: list[dict[str, Any]], *, game_id: str, seen_request_ids: set[str]
+PHASE_OPENING_TYPES = {"reinforcement_report", "movement_visibility_report"}
+
+
+def latest_unseen_phase_report(
+    messages: list[dict[str, Any]], *, game_id: str, seen_phase_ids: set[str]
 ) -> dict[str, Any] | None:
     matches = [
         message
         for message in messages
         if isinstance(message.get("body"), dict)
-        and message["body"].get("type") == "phase_request"
+        and message["body"].get("type") in PHASE_OPENING_TYPES
         and message["body"].get("game_id") == game_id
-        and message["body"].get("request_id") not in seen_request_ids
+        and message["body"].get("phase_id") not in seen_phase_ids
     ]
     if not matches:
         return None

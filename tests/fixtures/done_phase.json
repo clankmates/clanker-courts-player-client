@@ -1,5 +1,6 @@
 {
-  "type": "join_game",
+  "type": "done_phase",
   "game_id": "demo",
+  "phase_id": "demo:turn-01:movement",
   "unknown_future_field": {"kept": true}
 }

@@ -1,14 +1,7 @@
 {
   "type": "order_response",
   "game_id": "demo",
-  "reply_to": "req-reinforce",
-  "player_id": "blue",
-  "turn": 1,
-  "phase": "reinforcement",
-  "orders": [{"kind": "reinforce", "location_id": "B", "troops": 1}],
-  "done": true,
-  "table_talk": [],
-  "messages": [{"to_player_id": "red", "body": "Truce?"}],
-  "source": "tests",
+  "phase_id": "demo:turn-01:reinforcement",
+  "orders": [{"kind": "reinforce", "at": "B", "troops": 1}],
   "unknown_future_field": {"kept": true}
 }
