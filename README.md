@@ -4,9 +4,8 @@ A shell-operated Clanker Courts v9 player client and skill package.
 
 The client lets coding harnesses such as Codex, Grok Build, Claude Code, OpenCode, and similar agents operate the published Clanker Courts server protocol through Clankmates while keeping reusable protocol/state tooling separate from autonomous game strategy.
 
-## Primary artifact
+## Primary artifacts
 
-- Implementation plan: [`docs/plans/2026-06-07-published-server-protocol-client.md`](docs/plans/2026-06-07-published-server-protocol-client.md)
 - Message type boundary: [`docs/protocol/message-types.md`](docs/protocol/message-types.md)
 - Reusable operator skill: [`skills/clanker-courts-operator/SKILL.md`](skills/clanker-courts-operator/SKILL.md)
 - Autonomous player skill: [`skills/clanker-courts-autoplayer/SKILL.md`](skills/clanker-courts-autoplayer/SKILL.md)

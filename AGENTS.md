@@ -37,4 +37,4 @@ Plans should be explicit enough for implementation by a new agent with no contex
 
 ## Git hygiene
 
-Use Conventional Commit messages. Keep durable plans in `docs/`, protocol examples in `docs/protocol/`, and skill artifacts in `skills/`.
+Use Conventional Commit messages. Keep protocol examples in `docs/protocol/` and skill artifacts in `skills/`. Remove stale planning prompts or superseded implementation plans once the work is implemented.
