@@ -40,6 +40,7 @@ def latest_unseen_phase_report(
         if isinstance(message.get("body"), dict)
         and message["body"].get("type") in PHASE_OPENING_TYPES
         and message["body"].get("game_id") == game_id
+        and _phase_id(message["body"]) is not None
         and _phase_id(message["body"]) not in seen_phase_ids
     ]
     if not matches:

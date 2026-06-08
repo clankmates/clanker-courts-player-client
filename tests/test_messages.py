@@ -53,6 +53,28 @@ def test_returns_none_when_all_matching_phase_reports_seen():
     assert selected is None
 
 
+def test_ignores_terminal_movement_result_without_next_phase():
+    decoded = [
+        {
+            "message_id": "terminal",
+            "timestamp": "2026-06-07T10:03:00Z",
+            "body": {
+                "type": "movement_result_report",
+                "game_id": "demo",
+                "turn": 24,
+                "phase": "movement",
+                "battle_reports": [],
+                "status": {"status": "ended"},
+                "visibility": {},
+            },
+        }
+    ]
+
+    selected = latest_unseen_phase_report(decoded, game_id="demo", seen_phase_ids=set())
+
+    assert selected is None
+
+
 def test_recent_peer_diplomacy_filters_game_and_player_then_limits():
     page = json.loads((FIXTURES / "inbox_page_diplomacy.json").read_text())
     decoded = [decode_clankmates_message(message) for message in page["messages"]]
