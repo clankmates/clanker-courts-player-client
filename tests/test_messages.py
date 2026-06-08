@@ -11,12 +11,12 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_decode_message_body_json_string_from_attributes():
-    message = {"id": "m1", "attributes": {"body": '{"type":"reinforcement_report","game_id":"g"}'}}
+    message = {"id": "m1", "attributes": {"body": '{"type":"setup_report","game_id":"g"}'}}
 
     decoded = decode_clankmates_message(message)
 
     assert decoded["message_id"] == "m1"
-    assert decoded["body"] == {"type": "reinforcement_report", "game_id": "g"}
+    assert decoded["body"] == {"type": "setup_report", "game_id": "g"}
     assert decoded["raw"] == message
 
 

@@ -1,10 +1,10 @@
 {
-  "type": "movement_visibility_report",
+  "type": "movement_phase_report",
   "game_id": "demo",
   "phase_id": "demo:turn-01:movement",
   "turn": 1,
   "phase": "movement",
   "movement_clock_ms": 120000,
-  "visibility": {"controlled": [], "adjacent": [], "distance_two": [], "connectivity_graph": {}},
+  "visibility": {"locations": [], "connectivity_graph": {}},
   "unknown_future_field": {"kept": true}
 }

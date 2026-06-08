@@ -10,7 +10,6 @@ COMMANDS = [
     "poll",
     "ready",
     "submit-orders",
-    "done-phase",
     "send-diplomacy",
     "state",
     "operator-context",
@@ -112,7 +111,6 @@ def _ready(args: argparse.Namespace) -> int:
     body = {
         "type": "ready_to_start",
         "game_id": args.game_id,
-        "ready_check_id": args.ready_check_id,
     }
     return _send_or_preview(
         profile=args.profile,
@@ -124,7 +122,7 @@ def _ready(args: argparse.Namespace) -> int:
 
 def _submit_orders(args: argparse.Namespace) -> int:
     body = {
-        "type": "order_response",
+        "type": "order_package",
         "game_id": args.game_id,
         "phase_id": args.phase_id,
         "orders": _parse_json_array(args.orders_json, field="orders"),
@@ -135,22 +133,6 @@ def _submit_orders(args: argparse.Namespace) -> int:
         body=body,
         dry_run=args.dry_run,
     )
-
-
-def _done_phase(args: argparse.Namespace) -> int:
-    body = {
-        "type": "done_phase",
-        "game_id": args.game_id,
-        "phase_id": args.phase_id,
-    }
-    return _send_or_preview(
-        profile=args.profile,
-        recipient=args.server,
-        body=body,
-        dry_run=args.dry_run,
-    )
-
-
 def _send_diplomacy(args: argparse.Namespace) -> int:
     body = {
         "type": "diplomacy_message",
@@ -249,11 +231,10 @@ def build_parser() -> argparse.ArgumentParser:
     ready.add_argument("--profile", required=True)
     ready.add_argument("--server", required=True)
     ready.add_argument("--game-id", required=True)
-    ready.add_argument("--ready-check-id", required=True)
     ready.add_argument("--dry-run", action="store_true")
     ready.set_defaults(func=_ready)
 
-    submit = subparsers.add_parser("submit-orders", help="send order_response")
+    submit = subparsers.add_parser("submit-orders", help="send order_package")
     submit.add_argument("--profile", required=True)
     submit.add_argument("--server", required=True)
     submit.add_argument("--game-id", required=True)
@@ -261,14 +242,6 @@ def build_parser() -> argparse.ArgumentParser:
     submit.add_argument("--orders-json", default="[]")
     submit.add_argument("--dry-run", action="store_true")
     submit.set_defaults(func=_submit_orders)
-
-    done = subparsers.add_parser("done-phase", help="send done_phase")
-    done.add_argument("--profile", required=True)
-    done.add_argument("--server", required=True)
-    done.add_argument("--game-id", required=True)
-    done.add_argument("--phase-id", required=True)
-    done.add_argument("--dry-run", action="store_true")
-    done.set_defaults(func=_done_phase)
 
     diplomacy = subparsers.add_parser("send-diplomacy", help="send direct peer diplomacy")
     diplomacy.add_argument("--profile", required=True)

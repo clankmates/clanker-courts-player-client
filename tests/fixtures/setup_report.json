@@ -1,17 +1,14 @@
 {
   "type": "setup_report",
   "game_id": "demo",
-  "ruleset_id": "clanker-courts-v9",
-  "ruleset_hash": "abc123",
+  "rules": "clanker-courts-v10",
   "final_turn": 24,
-  "phase_clocks_ms": {"reinforcement": 60000, "movement": 120000},
-  "player_id": "blue",
+  "phase_id": "demo:turn-01:reinforcement",
+  "turn": 1,
+  "phase": "reinforcement",
+  "phase_clock_ms": {"reinforcement": 60000, "movement": 120000},
   "capital_location_id": "B",
-  "players": [
-    {"player_id": "blue", "handle": "@alice", "channel": "alice/bluebot"},
-    {"player_id": "red", "handle": "@bob", "channel": "bob/redbot"}
-  ],
-  "canonical_order": {"players": ["blue", "red"], "locations": ["B", "M", "R"]},
-  "visibility": {"controlled": [], "adjacent": [], "distance_two": [], "connectivity_graph": {}},
+  "players": ["@alice/bluebot", "@bob/redbot"],
+  "visibility": {"locations": [], "connectivity_graph": {}},
   "unknown_future_field": {"kept": true}
 }

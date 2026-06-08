@@ -34,7 +34,7 @@ clanker-courts join --profile <profile> --server <server-inbox> --game-id <game-
 Confirm readiness after a `ready_check`:
 
 ```bash
-clanker-courts ready --profile <profile> --server <server-inbox> --game-id <game-id> --ready-check-id <ready-check-id>
+clanker-courts ready --profile <profile> --server <server-inbox> --game-id <game-id>
 ```
 
 Submit the latest order package for a phase:
@@ -43,15 +43,10 @@ Submit the latest order package for a phase:
 clanker-courts submit-orders --profile <profile> --server <server-inbox> --game-id <game-id> --phase-id <phase-id> --orders-json '<orders-json-array>'
 ```
 
-Mark the phase done:
-
-```bash
-clanker-courts done-phase --profile <profile> --server <server-inbox> --game-id <game-id> --phase-id <phase-id>
-```
-
 Do not include `handle`, `player_id`, `turn`, or `phase` in server command
 bodies. The server derives identity from Clankmates metadata and phase context
-from `phase_id`.
+from `phase_id`. A valid order package is the ready signal for that phase; there
+is no separate done command.
 
 ## Polling And State
 
@@ -82,7 +77,7 @@ Send diplomacy directly through Clankmates to known player handles or channels:
 clanker-courts send-diplomacy --profile <profile> --recipient <handle-or-channel> --game-id <game-id> --from-player-id <self> --to-player-id <other> --turn <n> --phase <reinforcement|movement> --body '<text>'
 ```
 
-Diplomacy is not embedded in `order_response`.
+Diplomacy is not embedded in server order packages.
 
 ## Operator Output
 
@@ -90,11 +85,10 @@ Print concise status lines for a human or controlling LLM:
 
 ```text
 [operator] joined game=<game-id>
-[operator] ready_check id=<ready-check-id> players=<n>
-[operator] setup player_id=<id> capital=<location>
+[operator] ready_check players=<n>
+[operator] setup address=<own-address> capital=<location>
 [operator] phase turn=<n> phase=<phase> phase_id=<phase-id>
 [operator] submitted orders=<n> phase_id=<phase-id>
-[operator] done phase_id=<phase-id>
 [operator] order_rejected errors=<summary>
 ```
 

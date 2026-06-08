@@ -1,6 +1,5 @@
 {
   "type": "ready_to_start",
   "game_id": "demo",
-  "ready_check_id": "demo:ready:1",
   "unknown_future_field": {"kept": true}
 }

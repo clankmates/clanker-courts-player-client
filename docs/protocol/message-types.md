@@ -24,16 +24,15 @@ metadata.
 ```json
 {
   "type": "ready_to_start",
-  "game_id": "demo",
-  "ready_check_id": "demo:ready:1"
+  "game_id": "demo"
 }
 ```
 
-### `order_response`
+### `order_package`
 
 ```json
 {
-  "type": "order_response",
+  "type": "order_package",
   "game_id": "demo",
   "phase_id": "demo:turn-03:movement",
   "orders": [
@@ -43,19 +42,8 @@ metadata.
 ```
 
 The client does not assert `player_id`, `turn`, or `phase`. The opaque
-`phase_id` prevents stale submissions.
-
-### `done_phase`
-
-```json
-{
-  "type": "done_phase",
-  "game_id": "demo",
-  "phase_id": "demo:turn-03:movement"
-}
-```
-
-Once sent, later order packages for that phase may be ignored by the server.
+`phase_id` prevents stale submissions. A valid `order_package` marks the player
+ready to resolve the phase. There is no separate done message.
 
 ## Server Messages
 
@@ -63,13 +51,12 @@ Once sent, later order packages for that phase may be ignored by the server.
 - `join_ack` / `join_rejected`: response to `join_game`.
 - `lobby_update`: lobby membership changes.
 - `ready_check`: asks joined players to confirm readiness.
-- `setup_report`: assigned player ID, rules hash, final turn, clocks, canonical
-  order, initial visibility.
-- `reinforcement_report`: starts a reinforcement phase and includes `phase_id`.
-- `reinforcement_result_report`: result of reinforcement orders.
-- `movement_visibility_report`: starts movement and includes `phase_id`.
+- `start_cancelled`: readiness failed because another joined player did not answer.
+- `setup_report`: opens the first reinforcement phase and includes `phase_id`.
+- `movement_phase_report`: starts movement and includes `phase_id`.
 - `movement_result_report`: movement and battle results visible to the player.
-- `after_game_report`: postgame archive.
+- `movement_result_report.next_phase`: opens the next reinforcement phase when
+  the game continues.
 - `order_accepted` / `order_rejected`: response to an order package.
 
 ## Direct Diplomacy
@@ -96,6 +83,9 @@ The client must not use these older local-game harness shapes:
 
 - `game_started`
 - `phase_request`
+- `done_phase`
+- `movement_visibility_report`
+- `order_response`
 - `order_response.reply_to`
 - `order_response.player_id`
 - `order_response.turn`

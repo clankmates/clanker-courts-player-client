@@ -2,6 +2,6 @@
   "type": "order_accepted",
   "game_id": "demo",
   "phase_id": "demo:turn-01:movement",
-  "normalized_orders": [],
+  "ready": true,
   "unknown_future_field": {"kept": true}
 }

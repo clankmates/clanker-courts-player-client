@@ -15,7 +15,7 @@ def test_reply_uses_exact_clankm_argv_and_json_body():
         return subprocess.CompletedProcess(argv, 0, stdout='{"ok":true}', stderr="")
 
     client = ClankmatesClient(runner=runner)
-    body = {"type": "order_response", "orders": []}
+    body = {"type": "order_package", "orders": []}
 
     assert client.reply("p1", "thread-1", body) == {"ok": True}
     assert calls[0][0] == [

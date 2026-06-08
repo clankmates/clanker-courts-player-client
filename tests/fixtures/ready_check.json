@@ -1,12 +1,6 @@
 {
   "type": "ready_check",
   "game_id": "demo",
-  "ready_check_id": "demo:ready:1",
   "ready_by_ms": 60000,
-  "players": [
-    {"slot": 1, "handle": "@alice", "channel": "alice/bluebot"},
-    {"slot": 2, "handle": "@bob", "channel": "bob/redbot"},
-    {"slot": 3, "handle": "@charlie", "channel": "charlie/greenbot"}
-  ],
   "unknown_future_field": {"kept": true}
 }

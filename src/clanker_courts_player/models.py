@@ -36,7 +36,6 @@ class JoinGame(ClientCommandModel):
 class ReadyToStart(ClientCommandModel):
     type: Literal["ready_to_start"]
     game_id: str
-    ready_check_id: str
 
 
 class Order(ProtocolModel):
@@ -50,8 +49,8 @@ class Order(ProtocolModel):
         return value
 
 
-class OrderResponse(ClientCommandModel):
-    type: Literal["order_response"]
+class OrderPackage(ClientCommandModel):
+    type: Literal["order_package"]
     game_id: str
     phase_id: str
     orders: list[Order]
@@ -71,14 +70,8 @@ class OrderResponse(ClientCommandModel):
             )
             for field in legacy_fields:
                 if field in value:
-                    raise ValueError(f"order_response must not include {field}")
+                    raise ValueError(f"order_package must not include {field}")
         return value
-
-
-class DonePhase(ClientCommandModel):
-    type: Literal["done_phase"]
-    game_id: str
-    phase_id: str
 
 
 class LobbyPlayer(ProtocolModel):
@@ -90,11 +83,10 @@ class LobbyPlayer(ProtocolModel):
 
 class ServerManifest(ProtocolModel):
     type: Literal["server_manifest"]
-    server: dict[str, Any]
+    server: str
     protocol_version: int
-    rules: dict[str, Any]
+    rules: str
     game: dict[str, Any]
-    players: list[LobbyPlayer]
 
 
 class JoinAck(ProtocolModel):
@@ -124,23 +116,14 @@ class LobbyUpdate(ProtocolModel):
 class ReadyCheck(ProtocolModel):
     type: Literal["ready_check"]
     game_id: str
-    ready_check_id: str
     ready_by_ms: int
-    players: list[LobbyPlayer]
 
 
-class SetupReport(ProtocolModel):
-    type: Literal["setup_report"]
+class StartCancelled(ProtocolModel):
+    type: Literal["start_cancelled"]
     game_id: str
-    ruleset_id: str
-    ruleset_hash: str
-    final_turn: int
-    phase_clocks_ms: dict[str, int]
-    player_id: str
-    capital_location_id: str
-    players: list[LobbyPlayer]
-    canonical_order: dict[str, Any]
-    visibility: dict[str, Any]
+    reason: str
+    open_slots: int
 
 
 class PhaseReport(ProtocolModel):
@@ -149,22 +132,17 @@ class PhaseReport(ProtocolModel):
     phase: Phase
 
 
-class ReinforcementReport(PhaseReport):
-    type: Literal["reinforcement_report"]
+class SetupReport(PhaseReport):
+    type: Literal["setup_report"]
+    rules: str
+    final_turn: int
     phase_id: str
-    reinforcements_available: int
-    controlled_cities: list[dict[str, Any]]
-    reinforcement_clock_ms: int | None = None
-
-
-class ReinforcementResultReport(PhaseReport):
-    type: Literal["reinforcement_result_report"]
-    applied_orders: list[dict[str, Any]]
+    phase_clock_ms: dict[str, int]
+    capital_location_id: str
+    players: list[str]
     visibility: dict[str, Any]
-
-
-class MovementVisibilityReport(PhaseReport):
-    type: Literal["movement_visibility_report"]
+class MovementPhaseReport(PhaseReport):
+    type: Literal["movement_phase_report"]
     phase_id: str
     movement_clock_ms: int | None = None
     visibility: dict[str, Any]
@@ -175,18 +153,14 @@ class MovementResultReport(PhaseReport):
     battle_reports: list[dict[str, Any]]
     status: dict[str, Any]
     visibility: dict[str, Any]
-
-
-class AfterGameReport(ProtocolModel):
-    type: Literal["after_game_report"]
-    game_id: str
+    next_phase: dict[str, Any] | None = None
 
 
 class OrderAccepted(ProtocolModel):
     type: Literal["order_accepted"]
     game_id: str
     phase_id: str
-    normalized_orders: list[dict[str, Any]]
+    ready: bool
 
 
 class OrderRejected(ProtocolModel):
@@ -194,6 +168,7 @@ class OrderRejected(ProtocolModel):
     game_id: str
     phase_id: str
     errors: list[dict[str, Any]]
+    ready: bool
 
 
 class PeerDiplomacyMessage(ProtocolModel):
@@ -222,18 +197,15 @@ MessageBody = Annotated[
     ServerManifest
     | JoinGame
     | ReadyToStart
-    | OrderResponse
-    | DonePhase
+    | OrderPackage
     | JoinAck
     | JoinRejected
     | LobbyUpdate
     | ReadyCheck
+    | StartCancelled
     | SetupReport
-    | ReinforcementReport
-    | ReinforcementResultReport
-    | MovementVisibilityReport
+    | MovementPhaseReport
     | MovementResultReport
-    | AfterGameReport
     | OrderAccepted
     | OrderRejected
     | PeerDiplomacyMessage,
@@ -244,18 +216,15 @@ MESSAGE_MODELS = {
     "server_manifest": ServerManifest,
     "join_game": JoinGame,
     "ready_to_start": ReadyToStart,
-    "order_response": OrderResponse,
-    "done_phase": DonePhase,
+    "order_package": OrderPackage,
     "join_ack": JoinAck,
     "join_rejected": JoinRejected,
     "lobby_update": LobbyUpdate,
     "ready_check": ReadyCheck,
+    "start_cancelled": StartCancelled,
     "setup_report": SetupReport,
-    "reinforcement_report": ReinforcementReport,
-    "reinforcement_result_report": ReinforcementResultReport,
-    "movement_visibility_report": MovementVisibilityReport,
+    "movement_phase_report": MovementPhaseReport,
     "movement_result_report": MovementResultReport,
-    "after_game_report": AfterGameReport,
     "order_accepted": OrderAccepted,
     "order_rejected": OrderRejected,
     "diplomacy_message": PeerDiplomacyMessage,
@@ -284,7 +253,7 @@ def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
             field = "to_player_id"
         if field == "$" and "join_game must not include handle" in error["msg"]:
             field = "handle"
-        if field == "$" and "order_response must not include " in error["msg"]:
+        if field == "$" and "order_package must not include " in error["msg"]:
             field = error["msg"].rsplit(" ", 1)[-1]
         errors.append({"field": field, "message": error["msg"]})
     return errors

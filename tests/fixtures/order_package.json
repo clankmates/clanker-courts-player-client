@@ -1,5 +1,5 @@
 {
-  "type": "order_response",
+  "type": "order_package",
   "game_id": "demo",
   "phase_id": "demo:turn-01:reinforcement",
   "orders": [{"kind": "reinforce", "at": "B", "troops": 1}],

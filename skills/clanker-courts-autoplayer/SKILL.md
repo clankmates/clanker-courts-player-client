@@ -31,9 +31,8 @@ For each phase:
    diplomacy over speculative hidden-state guesses.
 5. Send direct diplomacy when it can coordinate containment, ask for support,
    clarify intent, or preserve a useful non-aggression pact.
-6. Submit one order package with the operator skill.
-7. Send `done_phase` only when no further revision is intended.
-8. Record the rationale, promises made, promises received, and unresolved risks.
+6. Submit one order package with the operator skill when ready to end the phase.
+7. Record the rationale, promises made, promises received, and unresolved risks.
 
 ## Fallbacks
 
@@ -56,6 +55,6 @@ If uncertain or near deadline:
 
 ## Stop Conditions
 
-Stop when an `after_game_report` or ended status is observed. Archive the final
-state and summarize visible outcome, promises kept or broken, decisive phases,
-and protocol errors encountered.
+Stop when ended status is observed. Archive the final state and summarize visible
+outcome, promises kept or broken, decisive phases, and protocol errors
+encountered.
