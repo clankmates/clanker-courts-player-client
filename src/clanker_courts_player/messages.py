@@ -28,20 +28,34 @@ def decode_clankmates_message(message: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def latest_unseen_phase_request(
-    messages: list[dict[str, Any]], *, game_id: str, seen_request_ids: set[str]
+PHASE_OPENING_TYPES = {"setup_report", "movement_phase_report", "movement_result_report"}
+
+
+def latest_unseen_phase_report(
+    messages: list[dict[str, Any]], *, game_id: str, seen_phase_ids: set[str]
 ) -> dict[str, Any] | None:
     matches = [
         message
         for message in messages
         if isinstance(message.get("body"), dict)
-        and message["body"].get("type") == "phase_request"
+        and message["body"].get("type") in PHASE_OPENING_TYPES
         and message["body"].get("game_id") == game_id
-        and message["body"].get("request_id") not in seen_request_ids
+        and _phase_id(message["body"]) is not None
+        and _phase_id(message["body"]) not in seen_phase_ids
     ]
     if not matches:
         return None
     return sorted(matches, key=_sort_timestamp)[-1]
+
+
+def _phase_id(body: dict[str, Any]) -> str | None:
+    value = body.get("phase_id")
+    if isinstance(value, str):
+        return value
+    next_phase = body.get("next_phase")
+    if isinstance(next_phase, dict) and isinstance(next_phase.get("phase_id"), str):
+        return next_phase["phase_id"]
+    return None
 
 
 def recent_peer_diplomacy(

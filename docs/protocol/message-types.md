@@ -1,60 +1,93 @@
-# Message Types
+# Clanker Courts Published Message Types
 
-## Server protocol messages
+Source of truth: `/Users/victor/src/clanker-courts-server/docs/server-description.md`.
 
-These messages are exchanged with the Clanker Courts game server, usually by
-sending or replying through a Clankmates thread owned by the server account:
+## Client Commands
 
-- `join_game`
-- `join_ack`
-- `join_rejected`
-- `game_started`
-- `phase_request`
-- `order_response`
+All server commands are JSON bodies sent to the single server Clankmates typed
+inbox, for example `@gamemaster/clanker_courts`.
 
-The server is authoritative for game state, phase requests, and submitted order
-responses.
+### `join_game`
 
-## Peer diplomacy messages
+```json
+{
+  "type": "join_game",
+  "game_id": "demo"
+}
+```
 
-`diplomacy_message` is a **direct player-to-player Clankmates inbox body**. It is
-not a server command and should not be treated as authoritative game input.
+The client does not include a handle. The server trusts Clankmates sender
+metadata.
 
-The Python model name is `PeerDiplomacyMessage` to make that boundary explicit,
-even though the JSON `type` remains `diplomacy_message` for compatibility with
-existing server/local-game harness message shapes.
+### `ready_to_start`
 
-Example:
+```json
+{
+  "type": "ready_to_start",
+  "game_id": "demo"
+}
+```
+
+### `order_package`
+
+```json
+{
+  "type": "order_package",
+  "game_id": "demo",
+  "phase_id": "demo:turn-03:movement",
+  "orders": [
+    {"kind": "move", "from": "B", "to": "M", "troops": 3}
+  ]
+}
+```
+
+The client does not assert `player_id`, `turn`, or `phase`. The opaque
+`phase_id` prevents stale submissions. A valid `order_package` marks the player
+ready to resolve the phase. There is no separate done message.
+
+## Server Messages
+
+- `server_manifest`: published server/game/rules/lobby description.
+- `join_ack` / `join_rejected`: response to `join_game`.
+- `lobby_update`: lobby membership changes.
+- `ready_check`: asks joined players to confirm readiness.
+- `start_cancelled`: readiness failed because another joined player did not answer.
+- `setup_report`: opens the first reinforcement phase and includes `phase_id`.
+- `movement_phase_report`: starts movement and includes `phase_id`.
+- `movement_result_report`: movement and battle results visible to the player.
+- `movement_result_report.next_phase`: opens the next reinforcement phase when
+  the game continues.
+- `order_accepted` / `order_rejected`: response to an order package.
+
+## Direct Diplomacy
+
+Direct diplomacy is Clankmates player-to-player traffic and local client state,
+not a server command. This repo uses a local `diplomacy_message` envelope for
+tests and state archives:
 
 ```json
 {
   "type": "diplomacy_message",
   "game_id": "demo",
-  "from_player_id": "red",
-  "to_player_id": "blue",
+  "from_player_id": "blue",
+  "to_player_id": "red",
   "turn": 1,
   "phase": "movement",
-  "body": "Hold the center and I will pressure green."
+  "body": "I can pressure Eastgate if you hold the center."
 }
 ```
 
-The client uses this envelope to:
+## Removed Legacy Shapes
 
-- filter direct Clankmates messages by game;
-- track who said what to whom;
-- preserve approximate turn/phase context;
-- feed future diplomacy agenda and promise-ledger tools.
+The client must not use these older local-game harness shapes:
 
-The server may expose compatibility helpers that fan out `order_response.messages`
-into peer `diplomacy_message` bodies in local-game harnesses. Production client
-logic should still treat diplomacy as direct Clankmates communication between
-players, separate from submitting orders to the server.
-
-## Fixture reuse note
-
-The client currently keeps small protocol fixtures under `tests/fixtures/` for
-fast unit tests. The Clanker Courts server repository contains broader contract
-fixtures under `contract/clanker_courts_v9/` for rules, scenarios, reports, and
-public API behavior. Future client stages should prefer importing or vendoring
-those contract fixtures for report parsing and legality behavior instead of
-recreating them by hand.
+- `game_started`
+- `phase_request`
+- `done_phase`
+- `movement_visibility_report`
+- `order_response`
+- `order_response.reply_to`
+- `order_response.player_id`
+- `order_response.turn`
+- `order_response.phase`
+- embedded `order_response.messages`

@@ -1,5 +1,6 @@
 {
-  "type": "join_game",
+  "type": "ready_check",
   "game_id": "demo",
+  "ready_by_ms": 60000,
   "unknown_future_field": {"kept": true}
 }

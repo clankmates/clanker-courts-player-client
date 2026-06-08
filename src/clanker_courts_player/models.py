@@ -17,58 +17,25 @@ class ProtocolModel(BaseModel):
         return super().model_dump(*args, **kwargs)
 
 
-class JoinGame(ProtocolModel):
+class ClientCommandModel(ProtocolModel):
+    pass
+
+
+class JoinGame(ClientCommandModel):
     type: Literal["join_game"]
     game_id: str
-    handle: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_client_supplied_identity(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "handle" in value:
+            raise ValueError("join_game must not include handle")
+        return value
 
 
-class JoinAck(ProtocolModel):
-    type: Literal["join_ack"]
+class ReadyToStart(ClientCommandModel):
+    type: Literal["ready_to_start"]
     game_id: str
-    status: Any
-    joined: int
-    required: int
-
-
-class JoinRejected(ProtocolModel):
-    type: Literal["join_rejected"]
-    game_id: str
-    reason: str
-
-
-class GameStarted(ProtocolModel):
-    type: Literal["game_started"]
-    game_id: str
-    player_id: str
-    ruleset_id: str
-    reports: list[dict[str, Any]]
-    communication_rules: dict[str, Any]
-    status: dict[str, Any]
-
-
-class PhaseRequest(ProtocolModel):
-    type: Literal["phase_request"]
-    game_id: str
-    request_id: str
-    player_id: str
-    turn: int
-    phase: Phase
-    status: dict[str, Any]
-    reports: list[dict[str, Any]]
-    deadline_ms: int | None = None
-
-
-class PeerDiplomacyDraft(ProtocolModel):
-    """Outbound peer diplomacy text the harness may send via Clankmates.
-
-    This is not a server command. It is kept on OrderResponse only for compatibility
-    with the current local-game harness fanout shape; production play should send
-    peer diplomacy directly through Clankmates.
-    """
-
-    to_player_id: str
-    body: str
 
 
 class Order(ProtocolModel):
@@ -82,27 +49,133 @@ class Order(ProtocolModel):
         return value
 
 
-class OrderResponse(ProtocolModel):
-    type: Literal["order_response"]
+class OrderPackage(ClientCommandModel):
+    type: Literal["order_package"]
     game_id: str
-    reply_to: str
-    player_id: str
+    phase_id: str
+    orders: list[Order]
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_legacy_identity_fields(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            legacy_fields = (
+                "reply_to",
+                "player_id",
+                "turn",
+                "phase",
+                "done",
+                "table_talk",
+                "messages",
+            )
+            for field in legacy_fields:
+                if field in value:
+                    raise ValueError(f"order_package must not include {field}")
+        return value
+
+
+class LobbyPlayer(ProtocolModel):
+    slot: int | None = None
+    handle: str | None = None
+    channel: str | None = None
+    player_id: str | None = None
+
+
+class ServerManifest(ProtocolModel):
+    type: Literal["server_manifest"]
+    server: str
+    protocol_version: int
+    rules: str
+    game: dict[str, Any]
+
+
+class JoinAck(ProtocolModel):
+    type: Literal["join_ack"]
+    game_id: str
+    status: str
+    joined: int
+    required: int
+    open_slots: int | None = None
+
+
+class JoinRejected(ProtocolModel):
+    type: Literal["join_rejected"]
+    game_id: str
+    reason: str
+
+
+class LobbyUpdate(ProtocolModel):
+    type: Literal["lobby_update"]
+    game_id: str
+    joined: int
+    required: int
+    open_slots: int
+    players: list[LobbyPlayer]
+
+
+class ReadyCheck(ProtocolModel):
+    type: Literal["ready_check"]
+    game_id: str
+    ready_by_ms: int
+
+
+class StartCancelled(ProtocolModel):
+    type: Literal["start_cancelled"]
+    game_id: str
+    reason: str
+    open_slots: int
+
+
+class PhaseReport(ProtocolModel):
+    game_id: str
     turn: int
     phase: Phase
-    orders: list[Order]
-    done: bool
-    table_talk: list[Any]
-    messages: list[PeerDiplomacyDraft]
-    source: str
-    fallback_reason: str | None = None
+
+
+class SetupReport(PhaseReport):
+    type: Literal["setup_report"]
+    rules: str
+    final_turn: int
+    phase_id: str
+    phase_clock_ms: dict[str, int]
+    capital_location_id: str
+    players: list[str]
+    visibility: dict[str, Any]
+class MovementPhaseReport(PhaseReport):
+    type: Literal["movement_phase_report"]
+    phase_id: str
+    movement_clock_ms: int | None = None
+    visibility: dict[str, Any]
+
+
+class MovementResultReport(PhaseReport):
+    type: Literal["movement_result_report"]
+    battle_reports: list[dict[str, Any]]
+    status: dict[str, Any]
+    visibility: dict[str, Any]
+    next_phase: dict[str, Any] | None = None
+
+
+class OrderAccepted(ProtocolModel):
+    type: Literal["order_accepted"]
+    game_id: str
+    phase_id: str
+    ready: bool
+
+
+class OrderRejected(ProtocolModel):
+    type: Literal["order_rejected"]
+    game_id: str
+    phase_id: str
+    errors: list[dict[str, Any]]
+    ready: bool
 
 
 class PeerDiplomacyMessage(ProtocolModel):
     """A direct player-to-player Clankmates diplomacy message.
 
-    The JSON body type remains ``diplomacy_message`` because that is the envelope
-    used in Clankmates inbox bodies. It is not a server command and should not be
-    sent to the game server as authoritative game input.
+    The server command protocol does not embed diplomacy in order submissions.
+    This envelope is local client state and direct Clankmates traffic only.
     """
 
     type: Literal["diplomacy_message"]
@@ -121,23 +194,39 @@ class PeerDiplomacyMessage(ProtocolModel):
 
 
 MessageBody = Annotated[
-    JoinGame
+    ServerManifest
+    | JoinGame
+    | ReadyToStart
+    | OrderPackage
     | JoinAck
     | JoinRejected
-    | GameStarted
-    | PhaseRequest
-    | OrderResponse
+    | LobbyUpdate
+    | ReadyCheck
+    | StartCancelled
+    | SetupReport
+    | MovementPhaseReport
+    | MovementResultReport
+    | OrderAccepted
+    | OrderRejected
     | PeerDiplomacyMessage,
     Field(discriminator="type"),
 ]
 
 MESSAGE_MODELS = {
+    "server_manifest": ServerManifest,
     "join_game": JoinGame,
+    "ready_to_start": ReadyToStart,
+    "order_package": OrderPackage,
     "join_ack": JoinAck,
     "join_rejected": JoinRejected,
-    "game_started": GameStarted,
-    "phase_request": PhaseRequest,
-    "order_response": OrderResponse,
+    "lobby_update": LobbyUpdate,
+    "ready_check": ReadyCheck,
+    "start_cancelled": StartCancelled,
+    "setup_report": SetupReport,
+    "movement_phase_report": MovementPhaseReport,
+    "movement_result_report": MovementResultReport,
+    "order_accepted": OrderAccepted,
+    "order_rejected": OrderRejected,
     "diplomacy_message": PeerDiplomacyMessage,
 }
 
@@ -162,5 +251,9 @@ def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
         field = ".".join(str(part) for part in loc) if loc else "$"
         if field == "$" and "peer diplomacy" in error["msg"]:
             field = "to_player_id"
+        if field == "$" and "join_game must not include handle" in error["msg"]:
+            field = "handle"
+        if field == "$" and "order_package must not include " in error["msg"]:
+            field = error["msg"].rsplit(" ", 1)[-1]
         errors.append({"field": field, "message": error["msg"]})
     return errors
