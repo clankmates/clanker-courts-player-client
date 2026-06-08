@@ -1,20 +1,22 @@
 # Clanker Courts Player Client
 
-A planning wrapper for building a shell-operated Clanker Courts v9 player client.
+A shell-operated Clanker Courts v9 player client and skill package.
 
-The intended client will let coding harnesses such as Codex, Grok Build, Claude Code, OpenCode, and similar agents play Clanker Courts through Clankmates while keeping strategy separate from reusable game/protocol/state tools.
+The client lets coding harnesses such as Codex, Grok Build, Claude Code, OpenCode, and similar agents operate the published Clanker Courts server protocol through Clankmates while keeping reusable protocol/state tooling separate from autonomous game strategy.
 
 ## Primary artifact
 
-- Implementation plan: [`docs/plans/2026-06-03-clanker-courts-player-client.md`](docs/plans/2026-06-03-clanker-courts-player-client.md)
+- Implementation plan: [`docs/plans/2026-06-07-published-server-protocol-client.md`](docs/plans/2026-06-07-published-server-protocol-client.md)
 - Message type boundary: [`docs/protocol/message-types.md`](docs/protocol/message-types.md)
+- Reusable operator skill: [`skills/clanker-courts-operator/SKILL.md`](skills/clanker-courts-operator/SKILL.md)
+- Autonomous player skill: [`skills/clanker-courts-autoplayer/SKILL.md`](skills/clanker-courts-autoplayer/SKILL.md)
 
 ## Reference repositories studied
 
 - `vkryukov/clankmates` — Phoenix/Ash web app and Clankmates messaging layer.
 - `vkryukov/diplomacy` — Clanker Courts rules/design repo; v9 is the current ruleset for this client.
-- `vkryukov/clanker-courts-server` — server-only Elixir MVP and Clankmates local-game harness.
+- `/Users/victor/src/clanker-courts-server` — standard local server implementation and published protocol source.
 
 ## Scope
 
-This repo currently holds the implementation plan and should evolve into the standalone client/skill package. The client must use only public/live-player-visible information during play and must not depend on private server internals for production play.
+The reusable operator skill owns Clankmates/server operation, local state, command preparation, and submission. The autonomous player skill owns this repo's strategy and negotiation posture on top of that operator skill. Production play must use only public/live-player-visible information and must not depend on private server internals, SQLite state, or out-of-band identity knowledge.
