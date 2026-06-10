@@ -63,6 +63,28 @@ def _send_or_preview(
     return 0
 
 
+def _reply_or_preview(
+    *,
+    profile: str,
+    thread_id: str,
+    body: dict[str, Any],
+    dry_run: bool,
+) -> int:
+    if dry_run:
+        _print_json({"ok": True, "dry_run": True, "thread_id": thread_id, "body": body})
+        return 0
+
+    from .clankmates import ClankmatesError
+
+    try:
+        result = _clankmates_client().reply(profile, thread_id, body)
+    except ClankmatesError as exc:
+        _print_json(exc.to_dict())
+        return 1
+    _print_json({"ok": True, "thread_id": thread_id, "body": body, "result": result})
+    return 0
+
+
 def _preflight(args: argparse.Namespace) -> int:
     if args.dry_run:
         _print_json(
@@ -113,9 +135,9 @@ def _ready(args: argparse.Namespace) -> int:
         "type": "ready_to_start",
         "game_id": args.game_id,
     }
-    return _send_or_preview(
+    return _reply_or_preview(
         profile=args.profile,
-        recipient=args.server,
+        thread_id=args.thread_id,
         body=body,
         dry_run=args.dry_run,
     )
@@ -128,12 +150,14 @@ def _submit_orders(args: argparse.Namespace) -> int:
         "phase_id": args.phase_id,
         "orders": _parse_json_array(args.orders_json, field="orders"),
     }
-    return _send_or_preview(
+    return _reply_or_preview(
         profile=args.profile,
-        recipient=args.server,
+        thread_id=args.thread_id,
         body=body,
         dry_run=args.dry_run,
     )
+
+
 def _send_diplomacy(args: argparse.Namespace) -> int:
     body = {
         "type": "diplomacy_message",
@@ -257,16 +281,16 @@ def build_parser() -> argparse.ArgumentParser:
     archive.add_argument("--dry-run", action="store_true")
     archive.set_defaults(func=_archive_thread)
 
-    ready = subparsers.add_parser("ready", help="send ready_to_start to the server inbox")
+    ready = subparsers.add_parser("ready", help="reply ready_to_start on the server thread")
     ready.add_argument("--profile", required=True)
-    ready.add_argument("--server", required=True)
+    ready.add_argument("--thread-id", required=True)
     ready.add_argument("--game-id", required=True)
     ready.add_argument("--dry-run", action="store_true")
     ready.set_defaults(func=_ready)
 
-    submit = subparsers.add_parser("submit-orders", help="send order_package")
+    submit = subparsers.add_parser("submit-orders", help="reply order_package on the server thread")
     submit.add_argument("--profile", required=True)
-    submit.add_argument("--server", required=True)
+    submit.add_argument("--thread-id", required=True)
     submit.add_argument("--game-id", required=True)
     submit.add_argument("--phase-id", required=True)
     submit.add_argument("--orders-json", default="[]")

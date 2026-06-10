@@ -25,7 +25,7 @@ def test_reply_uses_exact_clankm_argv_and_json_body():
         "inbox",
         "reply",
         "thread-1",
-        "--body",
+        "--payload",
         json.dumps(body, separators=(",", ":"), sort_keys=True),
         "--json",
     ]
@@ -66,7 +66,7 @@ def test_adapter_methods_parse_json_and_build_expected_commands():
             "inbox",
             "send",
             "@server",
-            "--body",
+            "--payload",
             '{"type":"join_game"}',
             "--json",
         ],
@@ -155,3 +155,80 @@ def test_preflight_cli_prints_structured_json_when_clankmates_errors(monkeypatch
     assert exit_code == 1
     assert payload["ok"] is False
     assert payload["stderr"] == "clankm missing"
+
+
+def test_ready_cli_replies_on_server_thread(monkeypatch, capsys):
+    calls = []
+
+    class FakeClient:
+        def reply(self, profile, thread_id, body):
+            calls.append((profile, thread_id, body))
+            return {"replied": True}
+
+    import clanker_courts_player.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "_clankmates_client", lambda: FakeClient())
+
+    exit_code = main(
+        [
+            "ready",
+            "--profile",
+            "p",
+            "--thread-id",
+            "thread-1",
+            "--game-id",
+            "demo",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exit_code == 0
+    assert calls == [("p", "thread-1", {"type": "ready_to_start", "game_id": "demo"})]
+    assert payload["thread_id"] == "thread-1"
+
+
+def test_submit_orders_cli_replies_on_server_thread(monkeypatch, capsys):
+    calls = []
+
+    class FakeClient:
+        def reply(self, profile, thread_id, body):
+            calls.append((profile, thread_id, body))
+            return {"replied": True}
+
+    import clanker_courts_player.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "_clankmates_client", lambda: FakeClient())
+
+    exit_code = main(
+        [
+            "submit-orders",
+            "--profile",
+            "p",
+            "--thread-id",
+            "thread-1",
+            "--game-id",
+            "demo",
+            "--phase-id",
+            "demo:turn-01:movement",
+            "--orders-json",
+            '[{"kind":"move","from":"B","to":"M","troops":3}]',
+        ]
+    )
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exit_code == 0
+    assert calls == [
+        (
+            "p",
+            "thread-1",
+            {
+                "type": "order_package",
+                "game_id": "demo",
+                "phase_id": "demo:turn-01:movement",
+                "orders": [{"kind": "move", "from": "B", "to": "M", "troops": 3}],
+            },
+        )
+    ]
+    assert payload["thread_id"] == "thread-1"

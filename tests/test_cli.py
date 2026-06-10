@@ -91,8 +91,8 @@ def test_ready_dry_run_uses_only_game_id():
         "ready",
         "--profile",
         "p",
-        "--server",
-        "@gamemaster/clanker_courts",
+        "--thread-id",
+        "thread-1",
         "--game-id",
         "demo",
         "--dry-run",
@@ -100,6 +100,7 @@ def test_ready_dry_run_uses_only_game_id():
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
+    assert payload["thread_id"] == "thread-1"
     assert payload["body"] == {"type": "ready_to_start", "game_id": "demo"}
 
 
@@ -108,8 +109,8 @@ def test_submit_orders_dry_run_uses_order_package_with_phase_id_not_player_ident
         "submit-orders",
         "--profile",
         "p",
-        "--server",
-        "@gamemaster/clanker_courts",
+        "--thread-id",
+        "thread-1",
         "--game-id",
         "demo",
         "--phase-id",
@@ -121,6 +122,7 @@ def test_submit_orders_dry_run_uses_order_package_with_phase_id_not_player_ident
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
+    assert payload["thread_id"] == "thread-1"
     assert payload["body"] == {
         "type": "order_package",
         "game_id": "demo",
