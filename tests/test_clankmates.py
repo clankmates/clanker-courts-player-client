@@ -38,6 +38,7 @@ def test_adapter_methods_parse_json_and_build_expected_commands():
             '{"handle":"bluebot"}',
             '{"threads":[]}',
             '{"messages":[]}',
+            '{"archived":true}',
             '{"sent":true}',
         ]
     )
@@ -51,11 +52,13 @@ def test_adapter_methods_parse_json_and_build_expected_commands():
     assert client.whoami("p") == {"handle": "bluebot"}
     assert client.list_threads("p") == {"threads": []}
     assert client.show_thread("p", "t1", limit=3) == {"messages": []}
+    assert client.archive_thread("p", "t1") == {"archived": True}
     assert client.send("p", "@server", {"type": "join_game"}) == {"sent": True}
     assert calls == [
         ["clankm", "--profile", "p", "auth", "whoami", "--json"],
         ["clankm", "--profile", "p", "inbox", "list", "--status", "all", "--json"],
         ["clankm", "--profile", "p", "inbox", "show", "t1", "--limit", "3", "--json"],
+        ["clankm", "--profile", "p", "inbox", "archive", "t1", "--json"],
         [
             "clankm",
             "--profile",

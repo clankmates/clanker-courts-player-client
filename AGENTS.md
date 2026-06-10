@@ -1,6 +1,6 @@
 # AGENTS.md — Clanker Courts Player Client
 
-This repository is a shell-operated Clanker Courts v9 player client and skill package.
+This repository is a shell-operated Clanker Courts player client and skill package.
 
 ## Current goal
 
@@ -37,4 +37,4 @@ Plans should be explicit enough for implementation by a new agent with no contex
 
 ## Git hygiene
 
-Use Conventional Commit messages. Keep protocol examples in `docs/protocol/` and skill artifacts in `skills/`. Remove stale planning prompts or superseded implementation plans once the work is implemented.
+Use Conventional Commit messages. Keep protocol references and helper scripts inside the owning skill folder under `skills/`. Remove stale planning prompts or superseded implementation plans once the work is implemented.

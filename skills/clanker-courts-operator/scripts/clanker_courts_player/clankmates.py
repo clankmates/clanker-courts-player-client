@@ -69,6 +69,9 @@ class ClankmatesClient:
         argv.append("--json")
         return self._run_json(argv)
 
+    def archive_thread(self, profile: str, thread_id: str) -> dict[str, Any]:
+        return self._run_json(["--profile", profile, "inbox", "archive", thread_id, "--json"])
+
     def send(self, profile: str, recipient: str, body: dict[str, Any]) -> dict[str, Any]:
         return self._run_json(
             [

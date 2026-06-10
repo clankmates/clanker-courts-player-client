@@ -1,14 +1,23 @@
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(ROOT / "skills/clanker-courts-operator/scripts"),
+    }
     return subprocess.run(
         [sys.executable, "-m", "clanker_courts_player", *args],
         check=False,
         text=True,
         capture_output=True,
+        env=env,
     )
 
 
@@ -23,6 +32,7 @@ def test_module_help_lists_published_protocol_commands():
         "ready",
         "submit-orders",
         "send-diplomacy",
+        "archive-thread",
         "state",
         "operator-context",
     ]:
@@ -116,4 +126,24 @@ def test_submit_orders_dry_run_uses_order_package_with_phase_id_not_player_ident
         "game_id": "demo",
         "phase_id": "demo:turn-01:movement",
         "orders": [{"kind": "move", "from": "B", "to": "M", "troops": 3}],
+    }
+
+
+def test_archive_thread_dry_run_prints_thread_id():
+    result = run_cli(
+        "archive-thread",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "ok": True,
+        "dry_run": True,
+        "profile": "p",
+        "thread_id": "thread-1",
     }
