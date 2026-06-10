@@ -1,7 +1,7 @@
 # Clanker Courts Autoplayer
 
 Use this skill to play autonomously on top of the Clanker Courts Operator skill.
-First follow `skills/clanker-courts-operator/SKILL.md` for all Clankmates,
+First follow the sibling `clanker-courts-operator` skill for all Clankmates,
 server-command, polling, and state mechanics.
 
 ## Strategy Boundary
@@ -17,6 +17,13 @@ information only. In short, use visible information only:
 
 Never inspect private server modules, SQLite state, hidden map state, or
 out-of-band identity information during live play.
+
+## Rules And Visibility
+
+Use the live game's published setup post, `server_manifest`, and phase reports
+for the current rules, reinforcement details, combat semantics, visible
+locations, and connectivity. Stay version-neutral; do not assume a rules version
+that was not published for the active game.
 
 ## Decision Loop
 

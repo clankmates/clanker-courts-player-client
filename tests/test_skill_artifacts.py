@@ -59,6 +59,9 @@ def test_autoplayer_skill_depends_on_operator_skill():
     text = (ROOT / "skills/clanker-courts-autoplayer/SKILL.md").read_text()
 
     assert "Clanker Courts Operator" in text
+    assert "sibling `clanker-courts-operator` skill" in text
+    assert "Rules And Visibility" in text
+    assert "published setup post" in text
     assert "visible information only" in text
     assert "Never inspect private server modules" in text
     assert "Screen any new first-contact diplomacy" in text
