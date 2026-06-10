@@ -11,6 +11,7 @@ COMMANDS = [
     "ready",
     "submit-orders",
     "send-diplomacy",
+    "archive-thread",
     "state",
     "operator-context",
 ]
@@ -177,6 +178,29 @@ def _poll(args: argparse.Namespace) -> int:
     return 0
 
 
+def _archive_thread(args: argparse.Namespace) -> int:
+    from .clankmates import ClankmatesError
+
+    if args.dry_run:
+        _print_json(
+            {
+                "ok": True,
+                "dry_run": True,
+                "profile": args.profile,
+                "thread_id": args.thread_id,
+            }
+        )
+        return 0
+
+    try:
+        result = _clankmates_client().archive_thread(args.profile, args.thread_id)
+    except ClankmatesError as exc:
+        _print_json(exc.to_dict())
+        return 1
+    _print_json({"ok": True, "thread_id": args.thread_id, "result": result})
+    return 0
+
+
 def _state(args: argparse.Namespace) -> int:
     from .state_store import StateStore
 
@@ -226,6 +250,12 @@ def build_parser() -> argparse.ArgumentParser:
     poll.add_argument("--cursor")
     poll.add_argument("--dry-run", action="store_true")
     poll.set_defaults(func=_poll)
+
+    archive = subparsers.add_parser("archive-thread", help="archive one processed inbox thread")
+    archive.add_argument("--profile", required=True)
+    archive.add_argument("--thread-id", required=True)
+    archive.add_argument("--dry-run", action="store_true")
+    archive.set_defaults(func=_archive_thread)
 
     ready = subparsers.add_parser("ready", help="send ready_to_start to the server inbox")
     ready.add_argument("--profile", required=True)

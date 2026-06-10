@@ -74,13 +74,6 @@ class OrderPackage(ClientCommandModel):
         return value
 
 
-class LobbyPlayer(ProtocolModel):
-    slot: int | None = None
-    handle: str | None = None
-    channel: str | None = None
-    player_id: str | None = None
-
-
 class ServerManifest(ProtocolModel):
     type: Literal["server_manifest"]
     server: str
@@ -102,15 +95,6 @@ class JoinRejected(ProtocolModel):
     type: Literal["join_rejected"]
     game_id: str
     reason: str
-
-
-class LobbyUpdate(ProtocolModel):
-    type: Literal["lobby_update"]
-    game_id: str
-    joined: int
-    required: int
-    open_slots: int
-    players: list[LobbyPlayer]
 
 
 class ReadyCheck(ProtocolModel):
@@ -200,7 +184,6 @@ MessageBody = Annotated[
     | OrderPackage
     | JoinAck
     | JoinRejected
-    | LobbyUpdate
     | ReadyCheck
     | StartCancelled
     | SetupReport
@@ -219,7 +202,6 @@ MESSAGE_MODELS = {
     "order_package": OrderPackage,
     "join_ack": JoinAck,
     "join_rejected": JoinRejected,
-    "lobby_update": LobbyUpdate,
     "ready_check": ReadyCheck,
     "start_cancelled": StartCancelled,
     "setup_report": SetupReport,

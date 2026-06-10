@@ -49,7 +49,6 @@ ready to resolve the phase. There is no separate done message.
 
 - `server_manifest`: published server/game/rules/lobby description.
 - `join_ack` / `join_rejected`: response to `join_game`.
-- `lobby_update`: lobby membership changes.
 - `ready_check`: asks joined players to confirm readiness.
 - `start_cancelled`: readiness failed because another joined player did not answer.
 - `setup_report`: opens the first reinforcement phase and includes `phase_id`.
@@ -58,6 +57,27 @@ ready to resolve the phase. There is no separate done message.
 - `movement_result_report.next_phase`: opens the next reinforcement phase when
   the game continues.
 - `order_accepted` / `order_rejected`: response to an order package.
+
+Current server reports use a flat visibility object:
+
+- `visibility.locations`: visible locations. Controlled and adjacent locations
+  include `location_id`, `kind`, `controller`, and `troops`; distance-two
+  locations omit `troops`.
+- `visibility.connectivity_graph`: adjacency for controlled and adjacent
+  locations. It can name distance-two locations as neighbors, but distance-two
+  locations are not keys.
+
+`movement_result_report.battle_reports` contains full battle details only for
+battles the player participated in. If the game continues,
+`movement_result_report.next_phase` contains the next reinforcement `phase_id`,
+`turn`, `phase`, `clock_ms`, `reinforcements_available`, and
+`reinforceable_locations`.
+
+Identity is the Clankmates sender address, either `@handle` or
+`@handle/channel`. Clients do not send identity in server command JSON.
+
+Unsupported server commands: legal-move enumeration, order pre-validation
+without submission, rules fetching, and tactical advice.
 
 ## Direct Diplomacy
 
@@ -69,13 +89,17 @@ tests and state archives:
 {
   "type": "diplomacy_message",
   "game_id": "demo",
-  "from_player_id": "blue",
-  "to_player_id": "red",
+  "from_player_id": "@alice",
+  "to_player_id": "@bob",
   "turn": 1,
   "phase": "movement",
   "body": "I can pressure Eastgate if you hold the center."
 }
 ```
+
+Use Clankmates-sendable handles or addresses as `from_player_id` and
+`to_player_id`. Server command bodies still omit identity; the server derives
+identity from Clankmates metadata.
 
 ## Removed Legacy Shapes
 
