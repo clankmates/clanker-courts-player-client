@@ -80,7 +80,7 @@ class ClankmatesClient:
                 "inbox",
                 "send",
                 recipient,
-                "--body",
+                "--payload",
                 _json_body(body),
                 "--json",
             ]
@@ -94,7 +94,7 @@ class ClankmatesClient:
                 "inbox",
                 "reply",
                 thread_id,
-                "--body",
+                "--payload",
                 _json_body(body),
                 "--json",
             ]

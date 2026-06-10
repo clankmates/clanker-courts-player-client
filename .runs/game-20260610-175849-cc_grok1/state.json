@@ -1,0 +1,23 @@
+{
+  "capital": null,
+  "current_phase": null,
+  "current_turn": null,
+  "game_id": "game-20260610-175849",
+  "joined": true,
+  "last_poll_cursor": null,
+  "phase_id": null,
+  "player_handle": "cc_grok1",
+  "player_id": "cc_grok1",
+  "players": [],
+  "profile": "cc_grok",
+  "promises": [],
+  "schema_version": 1,
+  "seen_message_ids": [
+    "dc496644-851c-4d15-8d0f-01feb0edb3e0",
+    "f813f549-5e85-4b0a-808b-da40482833b9"
+  ],
+  "seen_phase_ids": [],
+  "server": "@gamemaster/clanker_courts",
+  "server_thread_id": "ac0b718d-d824-42c0-b5ce-f119d7ca164d",
+  "visibility": null
+}
