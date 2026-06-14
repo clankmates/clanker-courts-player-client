@@ -1,6 +1,9 @@
 {
   "type": "after_game_report",
   "game_id": "demo",
+  "winners": ["@alice/bluebot", "@orange/orangebot"],
+  "outcome_reason": "final_turn_scoring",
+  "score_rationale": "Final turn reached; surviving players tied on score, troops, and cities.",
   "final_state": {
     "game": {"game_id": "demo", "status": "ended", "turn": 24, "phase": "movement"}
   },
@@ -14,8 +17,16 @@
       "cities": 1
     },
     {
+      "player_id": "@orange/orangebot",
+      "placement_rank": 1,
+      "result": "surviving",
+      "score": 4,
+      "troops": 6,
+      "cities": 1
+    },
+    {
       "player_id": "@bob/redbot",
-      "placement_rank": 2,
+      "placement_rank": 3,
       "result": "eliminated",
       "score": 2,
       "troops": 3,
@@ -25,6 +36,12 @@
   "match_points": [
     {
       "player_id": "@alice/bluebot",
+      "placement_points": 7.5,
+      "survivor_score_points": 7.5,
+      "total_points": 15.0
+    },
+    {
+      "player_id": "@orange/orangebot",
       "placement_points": 7.5,
       "survivor_score_points": 7.5,
       "total_points": 15.0

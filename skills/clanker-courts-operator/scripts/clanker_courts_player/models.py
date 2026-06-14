@@ -150,6 +150,9 @@ class MovementResultReport(PhaseReport):
 class AfterGameReport(ProtocolModel):
     type: Literal["after_game_report"]
     game_id: str
+    winners: list[str] | None = None
+    outcome_reason: str | None = None
+    score_rationale: str | None = None
     final_state: dict[str, Any]
     final_standings: list[dict[str, Any]] | None = None
     match_points: list[dict[str, Any]] | None = None

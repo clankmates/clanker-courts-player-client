@@ -86,14 +86,19 @@ def test_historical_v10_setup_fixture_is_supported_but_not_current_default():
     assert raw["fixture_note"] == "Historical v10 payload retained for backward compatibility only."
 
 
-def test_after_game_report_preserves_final_standings_and_match_points():
+def test_after_game_report_preserves_outcome_fields_final_standings_and_match_points():
     raw = json.loads((FIXTURES / "after_game_report.json").read_text())
 
     parsed = AfterGameReport.model_validate(raw)
 
+    assert parsed.winners == ["@alice/bluebot", "@orange/orangebot"]
+    assert parsed.outcome_reason == "final_turn_scoring"
+    assert "tied on score, troops, and cities" in parsed.score_rationale
     assert parsed.final_standings is not None
     assert parsed.match_points is not None
     assert parsed.final_standings[0]["placement_rank"] == 1
+    assert parsed.final_standings[1]["placement_rank"] == 1
+    assert parsed.final_standings[2]["placement_rank"] == 3
     assert parsed.match_points[0]["total_points"] == 15.0
 
 
