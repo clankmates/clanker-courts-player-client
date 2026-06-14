@@ -5,8 +5,11 @@ import pytest
 from clanker_courts_player.errors import StructuredValidationError
 from clanker_courts_player.models import (
     AfterGameReport,
+    BrokeredNegotiationMessage,
     JoinAck,
     JoinGame,
+    MessageAccepted,
+    MessageRejected,
     MovementPhaseReport,
     OrderAccepted,
     OrderPackage,
@@ -38,6 +41,10 @@ FIXTURES = Path(__file__).parent / "fixtures"
         ("order_package.json", OrderPackage),
         ("order_accepted.json", OrderAccepted),
         ("order_rejected.json", OrderRejected),
+        ("brokered_negotiation_command.json", BrokeredNegotiationMessage),
+        ("brokered_negotiation_message.json", BrokeredNegotiationMessage),
+        ("message_accepted.json", MessageAccepted),
+        ("message_rejected.json", MessageRejected),
         ("peer_diplomacy_message.json", PeerDiplomacyMessage),
     ],
 )
@@ -61,6 +68,9 @@ def test_current_setup_metadata_points_to_public_canonical_docs():
     assert parsed.rules_metadata["rules_path"] == "rules/clanker-courts.md"
     assert parsed.rules_metadata["protocol_path"] == "protocol/server.md"
     assert parsed.rules_metadata["canonical_manifest_path"] == "docs/canonical-manifest.json"
+    assert parsed.player == "Blue"
+    assert parsed.handle_mode == "random"
+    assert parsed.players == ["Blue", "Orange"]
     visible_locations = parsed.visibility["locations"]
     assert visible_locations[0]["reported_location_type"] == "capital"
     assert visible_locations[1]["reported_location_type"] == "city"
@@ -103,6 +113,33 @@ def test_after_game_report_preserves_final_standings_and_match_points():
                 "orders": [],
             },
             "player_id",
+        ),
+        (
+            {
+                "type": "message",
+                "game_id": "g",
+                "body": "hi",
+            },
+            "destination",
+        ),
+        (
+            {
+                "type": "message",
+                "game_id": "g",
+                "body": "hi",
+                "destination": "Orange",
+                "from": "Blue",
+            },
+            "destination",
+        ),
+        (
+            {
+                "type": "message",
+                "game_id": "g",
+                "destination": "Orange",
+                "body": " ",
+            },
+            "body",
         ),
         (
             {

@@ -1,0 +1,44 @@
+{
+  "messages": [
+    {
+      "id": "n1",
+      "thread_id": "server-thread",
+      "created_at": "2026-06-14T10:00:00Z",
+      "attributes": {
+        "body": "{\"type\":\"message\",\"game_id\":\"other\",\"from\":\"Teal\",\"body\":\"ignore game\"}"
+      }
+    },
+    {
+      "id": "n2",
+      "thread_id": "server-thread",
+      "created_at": "2026-06-14T10:01:00Z",
+      "attributes": {
+        "body": "{\"type\":\"message\",\"game_id\":\"demo\",\"from\":\"Orange\",\"body\":\"message 1\"}"
+      }
+    },
+    {
+      "id": "n3",
+      "thread_id": "server-thread",
+      "created_at": "2026-06-14T10:02:00Z",
+      "attributes": {
+        "body": "{\"type\":\"message\",\"game_id\":\"demo\",\"destination\":\"Orange\",\"body\":\"message 2\"}"
+      }
+    },
+    {
+      "id": "n4",
+      "thread_id": "server-thread",
+      "created_at": "2026-06-14T10:03:00Z",
+      "attributes": {
+        "body": "{\"type\":\"message_accepted\",\"game_id\":\"demo\",\"destination\":\"Orange\"}"
+      }
+    },
+    {
+      "id": "n5",
+      "thread_id": "server-thread",
+      "created_at": "2026-06-14T10:04:00Z",
+      "attributes": {
+        "body": "{\"type\":\"message\",\"game_id\":\"demo\",\"from\":\"Unknown\",\"body\":\"message 3\"}"
+      }
+    }
+  ]
+}

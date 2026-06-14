@@ -13,7 +13,7 @@
     "protocol_repo": "clankmates/clanker-courts-player-client",
     "protocol_path": "protocol/server.md",
     "protocol_version": 1,
-    "protocol_sha256": "7cef07d46f0b11e2babb7ecca5fc92166c6fabba9b47b5bf92cb8c945bc4baa2",
+    "protocol_sha256": "667db6fa9dabdcb4c2248feaf97f3c663d22719aeef120e81b95e2b50b8af050",
     "canonical_manifest_repo": "clankmates/clanker-courts-player-client",
     "canonical_manifest_path": "docs/canonical-manifest.json"
   },
@@ -21,6 +21,7 @@
     "game_id": "demo",
     "status": "open",
     "open_slots": 3,
+    "handle_mode": "random",
     "final_turn": 24,
     "phase_clock_ms": {"reinforcement": 60000, "movement": 120000}
   },

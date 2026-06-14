@@ -2,7 +2,6 @@ import json
 import subprocess
 
 import pytest
-
 from clanker_courts_player.clankmates import ClankmatesClient, ClankmatesError
 from clanker_courts_player.cli import main
 

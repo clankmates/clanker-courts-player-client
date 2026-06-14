@@ -1,0 +1,6 @@
+{
+  "type": "message_accepted",
+  "game_id": "demo",
+  "destination": "Orange",
+  "unknown_future_field": {"kept": true}
+}

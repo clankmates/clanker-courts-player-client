@@ -1,0 +1,7 @@
+{
+  "type": "message",
+  "game_id": "demo",
+  "destination": "Orange",
+  "body": "I can pressure Eastgate if you hold the center.",
+  "unknown_future_field": {"kept": true}
+}

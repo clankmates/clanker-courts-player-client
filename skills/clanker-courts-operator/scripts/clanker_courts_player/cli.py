@@ -10,7 +10,9 @@ COMMANDS = [
     "poll",
     "ready",
     "submit-orders",
+    "send-message",
     "send-diplomacy",
+    "send-peer-diplomacy",
     "archive-thread",
     "state",
     "operator-context",
@@ -158,7 +160,22 @@ def _submit_orders(args: argparse.Namespace) -> int:
     )
 
 
-def _send_diplomacy(args: argparse.Namespace) -> int:
+def _send_message(args: argparse.Namespace) -> int:
+    body = {
+        "type": "message",
+        "game_id": args.game_id,
+        "destination": args.destination,
+        "body": args.body,
+    }
+    return _reply_or_preview(
+        profile=args.profile,
+        thread_id=args.thread_id,
+        body=body,
+        dry_run=args.dry_run,
+    )
+
+
+def _send_peer_diplomacy(args: argparse.Namespace) -> int:
     body = {
         "type": "diplomacy_message",
         "game_id": args.game_id,
@@ -297,17 +314,41 @@ def build_parser() -> argparse.ArgumentParser:
     submit.add_argument("--dry-run", action="store_true")
     submit.set_defaults(func=_submit_orders)
 
-    diplomacy = subparsers.add_parser("send-diplomacy", help="send direct peer diplomacy")
+    message = subparsers.add_parser(
+        "send-message", help="reply brokered negotiation on the server thread"
+    )
+    message.add_argument("--profile", required=True)
+    message.add_argument("--thread-id", required=True)
+    message.add_argument("--game-id", required=True)
+    message.add_argument("--destination", required=True)
+    message.add_argument("--body", required=True)
+    message.add_argument("--dry-run", action="store_true")
+    message.set_defaults(func=_send_message)
+
+    diplomacy = subparsers.add_parser(
+        "send-diplomacy", help="deprecated alias for send-message"
+    )
     diplomacy.add_argument("--profile", required=True)
-    diplomacy.add_argument("--recipient", required=True)
+    diplomacy.add_argument("--thread-id", required=True)
     diplomacy.add_argument("--game-id", required=True)
-    diplomacy.add_argument("--from-player-id", required=True)
-    diplomacy.add_argument("--to-player-id", required=True)
-    diplomacy.add_argument("--turn", type=int, required=True)
-    diplomacy.add_argument("--phase", choices=["reinforcement", "movement"], required=True)
+    diplomacy.add_argument("--destination", required=True)
     diplomacy.add_argument("--body", required=True)
     diplomacy.add_argument("--dry-run", action="store_true")
-    diplomacy.set_defaults(func=_send_diplomacy)
+    diplomacy.set_defaults(func=_send_message)
+
+    peer_diplomacy = subparsers.add_parser(
+        "send-peer-diplomacy", help="send historical direct peer diplomacy"
+    )
+    peer_diplomacy.add_argument("--profile", required=True)
+    peer_diplomacy.add_argument("--recipient", required=True)
+    peer_diplomacy.add_argument("--game-id", required=True)
+    peer_diplomacy.add_argument("--from-player-id", required=True)
+    peer_diplomacy.add_argument("--to-player-id", required=True)
+    peer_diplomacy.add_argument("--turn", type=int, required=True)
+    peer_diplomacy.add_argument("--phase", choices=["reinforcement", "movement"], required=True)
+    peer_diplomacy.add_argument("--body", required=True)
+    peer_diplomacy.add_argument("--dry-run", action="store_true")
+    peer_diplomacy.set_defaults(func=_send_peer_diplomacy)
 
     state = subparsers.add_parser("state", help="print saved state")
     state.add_argument("--state", required=True)

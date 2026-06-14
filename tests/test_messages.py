@@ -4,7 +4,9 @@ from pathlib import Path
 from clanker_courts_player.messages import (
     decode_clankmates_message,
     latest_unseen_phase_report,
+    recent_brokered_negotiation,
     recent_peer_diplomacy,
+    screen_brokered_negotiation,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -86,3 +88,67 @@ def test_recent_peer_diplomacy_filters_game_and_player_then_limits():
         "message 12",
         "message 13",
     ]
+
+
+def test_recent_brokered_negotiation_filters_server_thread_messages_then_limits():
+    page = json.loads((FIXTURES / "inbox_page_brokered_negotiation.json").read_text())
+    decoded = [decode_clankmates_message(message) for message in page["messages"]]
+
+    messages = recent_brokered_negotiation(
+        decoded, game_id="demo", player_id="Orange", limit=2
+    )
+
+    assert [message["body"]["body"] for message in messages] == [
+        "message 2",
+        "message 3",
+    ]
+
+
+def test_screen_brokered_negotiation_accepts_known_sender_on_server_thread():
+    message = {
+        "thread_id": "server-thread",
+        "body": {
+            "type": "message",
+            "game_id": "demo",
+            "from": "Orange",
+            "body": "I can hold the center.",
+        },
+    }
+
+    result = screen_brokered_negotiation(
+        message,
+        game_id="demo",
+        server_thread_id="server-thread",
+        known_players={"Blue", "Orange"},
+    )
+
+    assert result == {
+        "accepted": True,
+        "reason": "accepted",
+        "sender": "Orange",
+    }
+
+
+def test_screen_brokered_negotiation_rejects_unknown_sender():
+    message = {
+        "thread_id": "server-thread",
+        "body": {
+            "type": "message",
+            "game_id": "demo",
+            "from": "Unknown",
+            "body": "trust me",
+        },
+    }
+
+    result = screen_brokered_negotiation(
+        message,
+        game_id="demo",
+        server_thread_id="server-thread",
+        known_players={"Blue", "Orange"},
+    )
+
+    assert result == {
+        "accepted": False,
+        "reason": "unknown_sender",
+        "sender": "Unknown",
+    }
