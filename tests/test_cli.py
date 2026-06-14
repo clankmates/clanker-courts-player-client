@@ -28,6 +28,7 @@ def test_module_help_lists_published_protocol_commands():
     for command in [
         "preflight",
         "join",
+        "find-threads",
         "freshen",
         "watch-messages",
         "poll",
@@ -220,17 +221,41 @@ def test_freshen_dry_run_uses_changes_primitive(tmp_path):
         "--state",
         str(tmp_path / "state.json"),
         "--since-cache",
-        "game-demo-server",
         "--save-cache",
-        "game-demo-server",
         "--dry-run",
     )
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
     assert payload["primitive"] == "inbox messages changes"
-    assert payload["since_cache"] == "game-demo-server"
-    assert payload["save_cache"] == "game-demo-server"
+    assert payload["since_cache"] is True
+    assert payload["save_cache"] is True
+
+
+def test_find_threads_dry_run_uses_search_and_freshness_filters():
+    result = run_cli(
+        "find-threads",
+        "--profile",
+        "p",
+        "--participant",
+        "@gamemaster/clanker_courts",
+        "--query",
+        "server_manifest",
+        "--since-cache",
+        "--save-cache",
+        "--limit",
+        "5",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["primitive"] == "inbox list"
+    assert payload["participant"] == "@gamemaster/clanker_courts"
+    assert payload["query"] == "server_manifest"
+    assert payload["since_cache"] is True
+    assert payload["save_cache"] is True
+    assert payload["limit"] == 5
 
 
 def test_watch_messages_dry_run_uses_watch_primitive(tmp_path):
@@ -242,9 +267,11 @@ def test_watch_messages_dry_run_uses_watch_primitive(tmp_path):
         "thread-1",
         "--state",
         str(tmp_path / "state.json"),
+        "--once",
         "--dry-run",
     )
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
     assert payload["primitive"] == "inbox watch messages"
+    assert payload["once"] is True

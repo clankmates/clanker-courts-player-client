@@ -83,8 +83,14 @@ With `profile`, `server`, and `game_id` known:
 
 1. Run preflight.
 2. Send `join_game` to the server inbox.
-3. List inbox threads and inspect recent server threads until you find the
-   matching `join_ack`, `ready_check`, or `setup_report` for the game.
+3. Use participant/search filters and local timestamp cache primitives to find
+   recent server threads until you find the matching `join_ack`, `ready_check`,
+   or `setup_report` for the game:
+
+   ```bash
+   <skill-dir>/scripts/clanker-courts find-threads --profile <profile> --participant <server-inbox> --query <game-id> --since-cache --save-cache --limit 20
+   ```
+
 4. Save that Clankmates thread ID in local state as the server thread.
 5. Send later server commands by replying on the saved server thread.
 6. Refresh the saved server thread with `freshen` during bootstrap and with
@@ -146,11 +152,13 @@ player client only tracks processed message IDs for audit and duplicate
 suppression:
 
 ```bash
-<skill-dir>/scripts/clanker-courts freshen --profile <profile> --thread-id <thread-id> --state <artifact-dir>/state.json --since-cache <game-id>-server --save-cache <game-id>-server
+<skill-dir>/scripts/clanker-courts freshen --profile <profile> --thread-id <thread-id> --state <artifact-dir>/state.json --since-cache --save-cache
 ```
 
 The helper calls `clankm inbox messages changes <thread-id>` with `--since`,
-`--since-cache`, or `--save-cache` when supplied. If the installed `clankm` is
+`--since-cache`, or `--save-cache` when supplied. `--since-cache` and
+`--save-cache` are boolean `clankm` flags; the cache scope is owned by
+`clankm`, not named by the player client. If the installed `clankm` is
 too old for `inbox messages changes`, it falls back to one bounded
 `inbox show --limit <n>` read and still suppresses duplicates through local
 processed-message IDs. Treat that fallback as a compatibility path, not the
@@ -164,10 +172,12 @@ long-running play:
 ```
 
 Each JSONL watch record is treated as authoritative incremental message input.
-The helper decodes it, appends unseen messages to `raw_messages.jsonl`, and
-updates `processed_message_ids` in state. If the harness needs tighter control
-over process lifetime, run `clankm inbox watch messages <thread-id>` directly
-and feed each JSONL record through equivalent decode/archive logic.
+The helper decodes each line as it arrives, appends unseen messages to
+`raw_messages.jsonl`, and updates `processed_message_ids` in state. Use
+`--once` when you need a bounded smoke test or single watch cycle. If the
+harness needs tighter control over process lifetime, run
+`clankm inbox watch messages <thread-id>` directly and feed each JSONL record
+through equivalent decode/archive logic.
 
 Use bounded polling only for manual recovery or post-game/debug inspection:
 
