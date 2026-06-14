@@ -36,7 +36,8 @@ current-state metadata from the active game are authoritative when they name a
 rules id, protocol version, phase clock, visibility shape, or other
 game-specific setting.
 
-Current live server payloads can include canonical `rules_metadata`, visibility
-`reported_location_type`, and final `final_standings`/`match_points` summaries.
-Treat older v10 saved payloads as historical fixtures for those games, not as
-the current default.
+Current live server payloads can include canonical `rules_metadata`, public
+player identities, `handle_mode`, visibility `reported_location_type`, brokered
+private negotiation messages, and final `final_standings`/`match_points`
+summaries. Treat older v10 saved payloads and direct peer diplomacy archives as
+historical fixtures for those games, not as the current default.
