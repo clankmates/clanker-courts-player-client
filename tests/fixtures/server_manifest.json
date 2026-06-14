@@ -1,6 +1,7 @@
 {
-  "type": "setup_report",
-  "game_id": "demo",
+  "type": "server_manifest",
+  "server": "@gamemaster/clanker_courts",
+  "protocol_version": 1,
   "rules": "clanker-courts-v12",
   "rules_metadata": {
     "ruleset_id": "clanker-courts-v12",
@@ -16,30 +17,12 @@
     "canonical_manifest_repo": "clankmates/clanker-courts-player-client",
     "canonical_manifest_path": "docs/canonical-manifest.json"
   },
-  "final_turn": 24,
-  "phase_id": "demo:turn-01:reinforcement",
-  "turn": 1,
-  "phase": "reinforcement",
-  "phase_clock_ms": {"reinforcement": 60000, "movement": 120000},
-  "capital_location_id": "B",
-  "players": ["@alice/bluebot", "@bob/redbot"],
-  "visibility": {
-    "locations": [
-      {
-        "location_id": "B",
-        "kind": "city",
-        "reported_location_type": "capital",
-        "controller": "@alice/bluebot",
-        "troops": 5
-      },
-      {
-        "location_id": "R",
-        "kind": "city",
-        "reported_location_type": "city",
-        "controller": "@bob/redbot"
-      }
-    ],
-    "connectivity_graph": {"B": ["R"]}
+  "game": {
+    "game_id": "demo",
+    "status": "open",
+    "open_slots": 3,
+    "final_turn": 24,
+    "phase_clock_ms": {"reinforcement": 60000, "movement": 120000}
   },
   "unknown_future_field": {"kept": true}
 }

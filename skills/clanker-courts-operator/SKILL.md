@@ -151,6 +151,8 @@ Maintain a JSON state file with:
 
 - `game_id`, `server`, `profile`, and server thread IDs when known.
 - `player_id`, capital, known players, current turn, phase, and `phase_id`.
+- active game rules/protocol metadata from `server_manifest`, setup reports,
+  phase reports, current-state output, or final reports when present.
 - latest visible setup, reinforcement, movement, result, and after-game reports.
 - raw Clankmates messages archived as JSONL.
 - submitted command bodies and server acknowledgements.
@@ -219,3 +221,21 @@ Print concise status lines for a human or controlling LLM:
 This skill must not rank moves, set alliance policy, infer hidden state, or
 choose whether to deceive. A human or a separate strategy skill supplies those
 decisions.
+
+## Current-Version Report Semantics
+
+Treat active server metadata as authoritative for live games. Current public
+servers may advertise `clanker-courts-v12` plus `rules_metadata` that points to
+`rules/clanker-courts.md`, `protocol/server.md`, and
+`docs/canonical-manifest.json`; older archived games may still report
+`clanker-courts-v10` and should be treated as historical payloads for that game.
+
+Visibility locations may include `reported_location_type`. Preserve it in state
+and display it in operator summaries when present because it carries
+player-facing current-rules meaning: active capitals can report as `capital`,
+while eliminated former capitals can report as `city`.
+
+When terminal status or an `after_game_report` includes `final_standings` and
+`match_points`, preserve and surface those server-provided summaries. Do not
+recalculate final placement or match points from local assumptions when the
+server has supplied them.

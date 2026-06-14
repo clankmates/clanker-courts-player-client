@@ -53,7 +53,9 @@ ready to resolve the phase. There is no separate done message.
 
 ## Server Messages
 
-- `server_manifest`: published server/game/rules/lobby description.
+- `server_manifest`: published server/game/rules/lobby description. Current
+  servers may include `rules_metadata` with canonical public rules, protocol,
+  and manifest repo/path/hash fields.
 - `join_ack` / `join_rejected`: response to `join_game`.
 - `ready_check`: asks joined players to confirm readiness.
 - `start_cancelled`: readiness failed because another joined player did not answer.
@@ -62,13 +64,16 @@ ready to resolve the phase. There is no separate done message.
 - `movement_result_report`: movement and battle results visible to the player.
 - `movement_result_report.next_phase`: opens the next reinforcement phase when
   the game continues.
+- `after_game_report`: post-game archive with final state, effective packages,
+  battle events, phase timeline, and when available `final_standings` and
+  `match_points`.
 - `order_accepted` / `order_rejected`: response to an order package.
 
 Current server reports use a flat visibility object:
 
 - `visibility.locations`: visible locations. Controlled and adjacent locations
-  include `location_id`, `kind`, `controller`, and `troops`; distance-two
-  locations omit `troops`.
+  include `location_id`, `kind`, `reported_location_type`, `controller`, and
+  `troops`; distance-two locations omit `troops`.
 - `visibility.connectivity_graph`: adjacency for controlled and adjacent
   locations. It can name distance-two locations as neighbors, but distance-two
   locations are not keys.
@@ -78,6 +83,14 @@ battles the player participated in. If the game continues,
 `movement_result_report.next_phase` contains the next reinforcement `phase_id`,
 `turn`, `phase`, `clock_ms`, `reinforcements_available`, and
 `reinforceable_locations`.
+
+Use `reported_location_type` when it is present for player-facing summaries and
+capital-risk reasoning. Active capitals can report as `capital`; eliminated
+former capitals can report as `city`.
+
+When terminal status or an `after_game_report` includes `final_standings` and
+`match_points`, use those server-provided values in final summaries instead of
+recomputing placement or match points locally.
 
 Identity is the Clankmates sender address, either `@handle` or
 `@handle/channel`. Clients do not send identity in server command JSON.

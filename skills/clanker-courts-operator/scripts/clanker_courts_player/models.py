@@ -79,6 +79,7 @@ class ServerManifest(ProtocolModel):
     server: str
     protocol_version: int
     rules: str
+    rules_metadata: dict[str, Any] | None = None
     game: dict[str, Any]
 
 
@@ -119,12 +120,15 @@ class PhaseReport(ProtocolModel):
 class SetupReport(PhaseReport):
     type: Literal["setup_report"]
     rules: str
+    rules_metadata: dict[str, Any] | None = None
     final_turn: int
     phase_id: str
     phase_clock_ms: dict[str, int]
     capital_location_id: str
     players: list[str]
     visibility: dict[str, Any]
+
+
 class MovementPhaseReport(PhaseReport):
     type: Literal["movement_phase_report"]
     phase_id: str
@@ -138,6 +142,17 @@ class MovementResultReport(PhaseReport):
     status: dict[str, Any]
     visibility: dict[str, Any]
     next_phase: dict[str, Any] | None = None
+
+
+class AfterGameReport(ProtocolModel):
+    type: Literal["after_game_report"]
+    game_id: str
+    final_state: dict[str, Any]
+    final_standings: list[dict[str, Any]] | None = None
+    match_points: list[dict[str, Any]] | None = None
+    effective_packages: list[dict[str, Any]]
+    battle_events: list[dict[str, Any]]
+    phase_timeline: list[dict[str, Any]]
 
 
 class OrderAccepted(ProtocolModel):
@@ -189,6 +204,7 @@ MessageBody = Annotated[
     | SetupReport
     | MovementPhaseReport
     | MovementResultReport
+    | AfterGameReport
     | OrderAccepted
     | OrderRejected
     | PeerDiplomacyMessage,
@@ -207,6 +223,7 @@ MESSAGE_MODELS = {
     "setup_report": SetupReport,
     "movement_phase_report": MovementPhaseReport,
     "movement_result_report": MovementResultReport,
+    "after_game_report": AfterGameReport,
     "order_accepted": OrderAccepted,
     "order_rejected": OrderRejected,
     "diplomacy_message": PeerDiplomacyMessage,

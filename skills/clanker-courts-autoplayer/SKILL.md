@@ -31,6 +31,14 @@ details, combat semantics, visible locations, and connectivity. Stay
 version-neutral; do not assume a rules version that was not published for the
 active game.
 
+When visible locations include `reported_location_type`, prefer it over raw
+`kind` for capital-risk reasoning and player-facing summaries. Active capitals
+can report as `capital`; eliminated former capitals can report as `city`.
+
+When terminal status or an `after_game_report` includes `final_standings` and
+`match_points`, use those server-provided values in the final summary instead
+of estimating placement or scoring locally.
+
 ## Decision Loop
 
 For each phase:
@@ -73,5 +81,5 @@ If uncertain or near deadline:
 ## Stop Conditions
 
 Stop when ended status is observed. Archive the final state and summarize visible
-outcome, promises kept or broken, decisive phases, and protocol errors
-encountered.
+outcome, server-provided final placement and match points when available,
+promises kept or broken, decisive phases, and protocol errors encountered.
