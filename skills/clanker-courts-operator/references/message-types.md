@@ -51,6 +51,22 @@ The client does not assert `player_id`, `turn`, or `phase`. The opaque
 `phase_id` prevents stale submissions. A valid `order_package` marks the player
 ready to resolve the phase. There is no separate done message.
 
+### `message`
+
+Ask the server to privately deliver negotiation to another active player. Send
+this on the saved server thread, not directly to another player's Clankmates
+inbox. `destination` is the public player identity from current server reports,
+not a Clankmates handle.
+
+```json
+{
+  "type": "message",
+  "game_id": "demo",
+  "destination": "Orange",
+  "body": "I can pressure Eastgate if you hold the center."
+}
+```
+
 ## Server Messages
 
 - `server_manifest`: published server/game/rules/lobby description. Current
@@ -68,6 +84,9 @@ ready to resolve the phase. There is no separate done message.
   battle events, phase timeline, and when available `final_standings` and
   `match_points`.
 - `order_accepted` / `order_rejected`: response to an order package.
+- `message`: privately brokered negotiation from another active player.
+- `message_accepted` / `message_rejected`: response to a brokered negotiation
+  command.
 
 Current server reports use a flat visibility object:
 
@@ -92,17 +111,21 @@ When terminal status or an `after_game_report` includes `final_standings` and
 `match_points`, use those server-provided values in final summaries instead of
 recomputing placement or match points locally.
 
-Identity is the Clankmates sender address, either `@handle` or
-`@handle/channel`. Clients do not send identity in server command JSON.
+The server maps each joined Clankmates sender address to a game-level public
+player identity. In default `random` mode these are color labels such as `Blue`
+and `Orange`; in `stable` mode they are deterministic one-way labels such as
+`Player-8c4f1a02b0dd`. Clients
+use published public player identities in reports and `message.destination`;
+they do not send raw Clankmates handles in server command JSON.
 
 Unsupported server commands: legal-move enumeration, order pre-validation
 without submission, rules fetching, and tactical advice.
 
-## Direct Diplomacy
+## Historical Direct Diplomacy
 
-Direct diplomacy is Clankmates player-to-player traffic and local client state,
-not a server command. This repo uses a local `diplomacy_message` envelope for
-tests and state archives:
+Older local runs may have direct Clankmates player-to-player traffic in local
+state archives. This repo retains a local `diplomacy_message` envelope for
+historical tests and explicit fallback tooling only:
 
 ```json
 {
@@ -116,9 +139,8 @@ tests and state archives:
 }
 ```
 
-Use Clankmates-sendable handles or addresses as `from_player_id` and
-`to_player_id`. Server command bodies still omit identity; the server derives
-identity from Clankmates metadata.
+Do not use this envelope for normal current games. Use server-brokered
+`message` commands instead.
 
 ## Removed Legacy Shapes
 

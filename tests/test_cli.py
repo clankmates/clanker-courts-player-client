@@ -31,7 +31,9 @@ def test_module_help_lists_published_protocol_commands():
         "poll",
         "ready",
         "submit-orders",
+        "send-message",
         "send-diplomacy",
+        "send-peer-diplomacy",
         "archive-thread",
         "state",
         "operator-context",
@@ -129,6 +131,61 @@ def test_submit_orders_dry_run_uses_order_package_with_phase_id_not_player_ident
         "phase_id": "demo:turn-01:movement",
         "orders": [{"kind": "move", "from": "B", "to": "M", "troops": 3}],
     }
+
+
+def test_send_message_dry_run_replies_brokered_negotiation_to_server_thread():
+    result = run_cli(
+        "send-message",
+        "--profile",
+        "p",
+        "--thread-id",
+        "server-thread",
+        "--game-id",
+        "demo",
+        "--destination",
+        "Orange",
+        "--body",
+        "Hold the center and I will pressure Blue.",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["thread_id"] == "server-thread"
+    assert payload["body"] == {
+        "type": "message",
+        "game_id": "demo",
+        "destination": "Orange",
+        "body": "Hold the center and I will pressure Blue.",
+    }
+
+
+def test_send_peer_diplomacy_dry_run_is_historical_direct_fallback():
+    result = run_cli(
+        "send-peer-diplomacy",
+        "--profile",
+        "p",
+        "--recipient",
+        "@orange",
+        "--game-id",
+        "demo",
+        "--from-player-id",
+        "@blue",
+        "--to-player-id",
+        "@orange",
+        "--turn",
+        "1",
+        "--phase",
+        "movement",
+        "--body",
+        "legacy fallback",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["recipient"] == "@orange"
+    assert payload["body"]["type"] == "diplomacy_message"
 
 
 def test_archive_thread_dry_run_prints_thread_id():

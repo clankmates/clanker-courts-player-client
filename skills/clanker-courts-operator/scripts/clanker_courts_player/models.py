@@ -14,6 +14,7 @@ class ProtocolModel(BaseModel):
 
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         kwargs.setdefault("exclude_none", True)
+        kwargs.setdefault("by_alias", True)
         return super().model_dump(*args, **kwargs)
 
 
@@ -125,6 +126,8 @@ class SetupReport(PhaseReport):
     phase_id: str
     phase_clock_ms: dict[str, int]
     capital_location_id: str
+    player: str | None = None
+    handle_mode: Literal["random", "stable"] | None = None
     players: list[str]
     visibility: dict[str, Any]
 
@@ -170,11 +173,48 @@ class OrderRejected(ProtocolModel):
     ready: bool
 
 
+class BrokeredNegotiationMessage(ClientCommandModel):
+    """A server-brokered private negotiation message.
+
+    Client commands include `destination`; server-delivered negotiation includes
+    `from`. Both shapes intentionally use the same protocol `type`.
+    """
+
+    type: Literal["message"]
+    game_id: str
+    body: str
+    destination: str | None = None
+    from_: str | None = Field(default=None, alias="from")
+
+    @model_validator(mode="after")
+    def require_direction(self) -> BrokeredNegotiationMessage:
+        has_destination = isinstance(self.destination, str) and self.destination.strip() != ""
+        has_from = isinstance(self.from_, str) and self.from_.strip() != ""
+        if has_destination == has_from:
+            raise ValueError("message must include exactly one of destination or from")
+        if self.body.strip() == "":
+            raise ValueError("message body must not be empty")
+        return self
+
+
+class MessageAccepted(ProtocolModel):
+    type: Literal["message_accepted"]
+    game_id: str
+    destination: str
+
+
+class MessageRejected(ProtocolModel):
+    type: Literal["message_rejected"]
+    game_id: str
+    destination: str | None = None
+    error: dict[str, Any]
+
+
 class PeerDiplomacyMessage(ProtocolModel):
     """A direct player-to-player Clankmates diplomacy message.
 
-    The server command protocol does not embed diplomacy in order submissions.
-    This envelope is local client state and direct Clankmates traffic only.
+    Retained for historical archives and explicit fallback tooling. Normal
+    current games use server-brokered `message` traffic instead.
     """
 
     type: Literal["diplomacy_message"]
@@ -207,6 +247,9 @@ MessageBody = Annotated[
     | AfterGameReport
     | OrderAccepted
     | OrderRejected
+    | BrokeredNegotiationMessage
+    | MessageAccepted
+    | MessageRejected
     | PeerDiplomacyMessage,
     Field(discriminator="type"),
 ]
@@ -226,6 +269,9 @@ MESSAGE_MODELS = {
     "after_game_report": AfterGameReport,
     "order_accepted": OrderAccepted,
     "order_rejected": OrderRejected,
+    "message": BrokeredNegotiationMessage,
+    "message_accepted": MessageAccepted,
+    "message_rejected": MessageRejected,
     "diplomacy_message": PeerDiplomacyMessage,
 }
 
@@ -250,6 +296,13 @@ def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
         field = ".".join(str(part) for part in loc) if loc else "$"
         if field == "$" and "peer diplomacy" in error["msg"]:
             field = "to_player_id"
+        if (
+            field == "$"
+            and "message must include exactly one of destination or from" in error["msg"]
+        ):
+            field = "destination"
+        if field == "$" and "message body must not be empty" in error["msg"]:
+            field = "body"
         if field == "$" and "join_game must not include handle" in error["msg"]:
             field = "handle"
         if field == "$" and "order_package must not include " in error["msg"]:

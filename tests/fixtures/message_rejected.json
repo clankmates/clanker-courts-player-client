@@ -1,0 +1,10 @@
+{
+  "type": "message_rejected",
+  "game_id": "demo",
+  "destination": "Orange",
+  "error": {
+    "code": "unknown_destination",
+    "details": {"destination": "Orange"}
+  },
+  "unknown_future_field": {"kept": true}
+}

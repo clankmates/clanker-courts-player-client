@@ -61,9 +61,9 @@ def _phase_id(body: dict[str, Any]) -> str | None:
 def recent_peer_diplomacy(
     messages: list[dict[str, Any]], *, game_id: str, player_id: str, limit: int = 12
 ) -> list[dict[str, Any]]:
-    """Return recent direct player-to-player diplomacy messages for one game.
+    """Return recent historical direct player-to-player diplomacy messages.
 
-    These messages are Clankmates peer inbox bodies, not game-server commands.
+    Normal current games use server-brokered `message` traffic instead.
     """
     matches = [
         message
@@ -77,6 +77,64 @@ def recent_peer_diplomacy(
         )
     ]
     return sorted(matches, key=_sort_timestamp)[-limit:]
+
+
+def recent_brokered_negotiation(
+    messages: list[dict[str, Any]], *, game_id: str, player_id: str | None = None, limit: int = 12
+) -> list[dict[str, Any]]:
+    """Return recent server-brokered private negotiation for one game.
+
+    Incoming messages contain `from`; locally archived sent messages contain
+    `destination`. When `player_id` is supplied, sent archives are included only
+    if they name that player as the destination.
+    """
+    matches = [
+        message
+        for message in messages
+        if isinstance(message.get("body"), dict)
+        and message["body"].get("type") == "message"
+        and message["body"].get("game_id") == game_id
+        and (
+            isinstance(message["body"].get("from"), str)
+            or (
+                isinstance(message["body"].get("destination"), str)
+                and (player_id is None or message["body"].get("destination") == player_id)
+            )
+        )
+    ]
+    return sorted(matches, key=_sort_timestamp)[-limit:]
+
+
+def screen_brokered_negotiation(
+    message: dict[str, Any],
+    *,
+    game_id: str,
+    server_thread_id: str,
+    known_players: set[str],
+) -> dict[str, Any]:
+    """Screen one inbound server-brokered negotiation before strategy use."""
+    body = message.get("body")
+    if not isinstance(body, dict):
+        return _screening_result(False, "non_json_body")
+    if message.get("thread_id") != server_thread_id:
+        return _screening_result(False, "unexpected_thread")
+    if body.get("type") != "message":
+        return _screening_result(False, "wrong_type")
+    if body.get("game_id") != game_id:
+        return _screening_result(False, "wrong_game")
+    sender = body.get("from")
+    if not isinstance(sender, str) or sender.strip() == "":
+        return _screening_result(False, "missing_from")
+    if sender not in known_players:
+        return _screening_result(False, "unknown_sender", sender=sender)
+    text = body.get("body")
+    if not isinstance(text, str) or text.strip() == "":
+        return _screening_result(False, "empty_body", sender=sender)
+    return _screening_result(True, "accepted", sender=sender)
+
+
+def _screening_result(accepted: bool, reason: str, **extra: Any) -> dict[str, Any]:
+    return {"accepted": accepted, "reason": reason, **extra}
 
 
 def _message_timestamp(message: dict[str, Any]) -> str | None:

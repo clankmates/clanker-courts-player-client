@@ -1,0 +1,7 @@
+{
+  "type": "message",
+  "game_id": "demo",
+  "from": "Orange",
+  "body": "I can hold the center this turn.",
+  "unknown_future_field": {"kept": true}
+}
