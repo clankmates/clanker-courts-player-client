@@ -69,6 +69,28 @@ class ClankmatesClient:
         argv.append("--json")
         return self._run_json(argv)
 
+    def message_changes(
+        self,
+        profile: str,
+        thread_id: str,
+        *,
+        since: str | None = None,
+        since_cache: str | None = None,
+        save_cache: str | None = None,
+    ) -> dict[str, Any]:
+        argv = ["--profile", profile, "inbox", "messages", "changes", thread_id]
+        if since is not None:
+            argv.extend(["--since", since])
+        if since_cache is not None:
+            argv.extend(["--since-cache", since_cache])
+        if save_cache is not None:
+            argv.extend(["--save-cache", save_cache])
+        argv.append("--json")
+        return self._run_json(argv)
+
+    def watch_messages(self, profile: str, thread_id: str) -> list[dict[str, Any]]:
+        return self._run_jsonl(["--profile", profile, "inbox", "watch", "messages", thread_id])
+
     def archive_thread(self, profile: str, thread_id: str) -> dict[str, Any]:
         return self._run_json(["--profile", profile, "inbox", "archive", thread_id, "--json"])
 
@@ -102,29 +124,7 @@ class ClankmatesClient:
 
     def _run_json(self, args: list[str]) -> dict[str, Any]:
         command = [self.clankm_path, *args]
-        try:
-            completed = self.runner(
-                command,
-                text=True,
-                capture_output=True,
-                timeout=self.timeout,
-                check=False,
-            )
-        except FileNotFoundError as exc:
-            raise ClankmatesError(
-                command=command,
-                returncode=None,
-                stdout="",
-                stderr=str(exc),
-            ) from exc
-        except subprocess.TimeoutExpired as exc:
-            raise ClankmatesError(
-                command=command,
-                returncode=None,
-                stdout=_coerce_text(exc.output),
-                stderr=_coerce_text(exc.stderr),
-                timeout=exc.timeout,
-            ) from exc
+        completed = self._run(command)
         stdout = completed.stdout or ""
         stderr = completed.stderr or ""
         if completed.returncode != 0:
@@ -153,6 +153,68 @@ class ClankmatesClient:
                 decode_error="expected JSON object",
             )
         return decoded
+
+    def _run_jsonl(self, args: list[str]) -> list[dict[str, Any]]:
+        command = [self.clankm_path, *args]
+        completed = self._run(command)
+        stdout = completed.stdout or ""
+        stderr = completed.stderr or ""
+        if completed.returncode != 0:
+            raise ClankmatesError(
+                command=command,
+                returncode=completed.returncode,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        records: list[dict[str, Any]] = []
+        for line_number, line in enumerate(stdout.splitlines(), start=1):
+            if line.strip() == "":
+                continue
+            try:
+                decoded = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ClankmatesError(
+                    command=command,
+                    returncode=completed.returncode,
+                    stdout=stdout,
+                    stderr=stderr,
+                    decode_error=f"line {line_number}: {exc}",
+                ) from exc
+            if not isinstance(decoded, dict):
+                raise ClankmatesError(
+                    command=command,
+                    returncode=completed.returncode,
+                    stdout=stdout,
+                    stderr=stderr,
+                    decode_error=f"line {line_number}: expected JSON object",
+                )
+            records.append(decoded)
+        return records
+
+    def _run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+        try:
+            return self.runner(
+                command,
+                text=True,
+                capture_output=True,
+                timeout=self.timeout,
+                check=False,
+            )
+        except FileNotFoundError as exc:
+            raise ClankmatesError(
+                command=command,
+                returncode=None,
+                stdout="",
+                stderr=str(exc),
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise ClankmatesError(
+                command=command,
+                returncode=None,
+                stdout=_coerce_text(exc.output),
+                stderr=_coerce_text(exc.stderr),
+                timeout=exc.timeout,
+            ) from exc
 
 
 def _json_body(body: dict[str, Any]) -> str:

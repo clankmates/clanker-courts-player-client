@@ -28,6 +28,8 @@ def test_module_help_lists_published_protocol_commands():
     for command in [
         "preflight",
         "join",
+        "freshen",
+        "watch-messages",
         "poll",
         "ready",
         "submit-orders",
@@ -206,3 +208,43 @@ def test_archive_thread_dry_run_prints_thread_id():
         "profile": "p",
         "thread_id": "thread-1",
     }
+
+
+def test_freshen_dry_run_uses_changes_primitive(tmp_path):
+    result = run_cli(
+        "freshen",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--state",
+        str(tmp_path / "state.json"),
+        "--since-cache",
+        "game-demo-server",
+        "--save-cache",
+        "game-demo-server",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["primitive"] == "inbox messages changes"
+    assert payload["since_cache"] == "game-demo-server"
+    assert payload["save_cache"] == "game-demo-server"
+
+
+def test_watch_messages_dry_run_uses_watch_primitive(tmp_path):
+    result = run_cli(
+        "watch-messages",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--state",
+        str(tmp_path / "state.json"),
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["primitive"] == "inbox watch messages"
