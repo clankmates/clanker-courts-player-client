@@ -144,7 +144,8 @@ def test_autoplayer_skill_depends_on_operator_skill():
 def test_protocol_documents_current_metadata_and_report_semantics():
     protocol = (ROOT / "protocol/server.md").read_text()
 
-    assert "Protocol baseline implemented rules id: `clanker-courts-v10`" in protocol
+    assert "implemented_rules_id: clanker-courts-v12" in protocol
+    assert "Ruleset: `clanker-courts-v12`" in protocol
     assert '"rules": "clanker-courts-v12"' in protocol
     assert '"rules_metadata"' in protocol
     assert '"rules_path": "rules/clanker-courts.md"' in protocol

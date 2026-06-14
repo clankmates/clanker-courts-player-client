@@ -16,8 +16,8 @@
       "canonical_path": "protocol/server.md",
       "canonical_url": "https://github.com/clankmates/clanker-courts-player-client/blob/main/protocol/server.md",
       "protocol_version": 1,
-      "implemented_rules_id": "clanker-courts-v10",
-      "canonical_sha256": "7cef07d46f0b11e2babb7ecca5fc92166c6fabba9b47b5bf92cb8c945bc4baa2"
+      "implemented_rules_id": "clanker-courts-v12",
+      "canonical_sha256": "55742b29b54e23fdd21e2b429b295e59d340a3fb281e25af210b1859a01c3db4"
     }
   ],
   "live_gameplay": {
