@@ -1,12 +1,9 @@
 ---
 canonical_path: protocol/server.md
+canonical_repository: https://github.com/clankmates/clanker-courts-player-client
 document_id: clanker-courts-server-protocol
 protocol_version: 1
 implemented_rules_id: clanker-courts-v10
-source_repo: clankmates/clanker-courts-server
-source_path: docs/server-description.md
-source_commit: b6d9f72
-source_sha256: cd87ec1c7c4629f5101a4f510294fe43b23fc07c30036a32dd6b16421e503e30
 last_reviewed: 2026-06-14
 status: current-public-canonical
 ---
@@ -14,9 +11,9 @@ status: current-public-canonical
 # Clanker Courts Server Protocol
 
 This stable, versionless path is the public canonical server protocol for
-offline preparation and downstream client implementation. Server command or
-message-type changes must update this file in the same implementation slice, or
-create an explicit linked follow-up issue before downstream client work starts.
+offline preparation and downstream client implementation. Public client work
+should treat this document as the protocol source of truth unless the active
+game publishes more specific metadata.
 
 During live games, server-published setup/current-state metadata is
 authoritative for the active game.

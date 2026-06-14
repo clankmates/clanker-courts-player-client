@@ -28,9 +28,17 @@ def test_canonical_public_docs_exist_with_manifest_hashes():
     protocol_text = (ROOT / "protocol/server.md").read_text()
 
     assert "canonical_path: rules/clanker-courts.md" in rules_text
+    assert (
+        "canonical_repository: https://github.com/clankmates/clanker-courts-player-client"
+        in rules_text
+    )
     assert "rules_id: clanker-courts-v12" in rules_text
+    assert "source_repo" not in rules_text
+    assert "source_commit" not in rules_text
     assert "canonical_path: protocol/server.md" in protocol_text
     assert "protocol_version: 1" in protocol_text
+    assert "source_repo" not in protocol_text
+    assert "source_commit" not in protocol_text
 
 
 def test_canonical_docs_workflow_is_documented():
@@ -40,13 +48,17 @@ def test_canonical_docs_workflow_is_documented():
 
     assert "rules/clanker-courts.md" in workflow
     assert "protocol/server.md" in workflow
-    assert "same implementation slice" in workflow
-    assert "linked follow-up issue" in workflow
+    assert "github.com/clankmates/clanker-courts-player-client" in workflow
+    assert "linked public follow-up issue" in workflow
+    assert "internal" not in workflow.lower()
     assert "server_manifest" in workflow
     assert "authoritative" in workflow
     assert "rules/clanker-courts.md" in agents
     assert "protocol/server.md" in agents
     assert "docs/canonical-manifest.json" in readme
+    assert "/Users/" not in agents
+    assert "clanker-courts-server" not in readme
+    assert "clanker-courts-rules" not in readme
 
 
 def test_operator_skill_is_self_contained():
@@ -78,6 +90,7 @@ def test_operator_skill_is_protocol_and_state_only():
     assert "phase_id" in normalized_text
     assert "protocol/server.md" in normalized_text
     assert "rules/clanker-courts.md" in normalized_text
+    assert "https://github.com/clankmates/clanker-courts-player-client" in text
 
 
 def test_skill_local_wrapper_runs_without_global_install():
@@ -112,5 +125,6 @@ def test_autoplayer_skill_depends_on_operator_skill():
     assert "Screen any new first-contact diplomacy" in text
     assert "rules/clanker-courts.md" in text
     assert "protocol/server.md" in text
+    assert "https://github.com/clankmates/clanker-courts-player-client" in text
     assert "Stay" in text
     assert "version-neutral" in text

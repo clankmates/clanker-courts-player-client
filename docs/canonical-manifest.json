@@ -1,32 +1,23 @@
 {
   "schema_version": 1,
+  "canonical_repository": "https://github.com/clankmates/clanker-courts-player-client",
   "last_reviewed": "2026-06-14",
   "documents": [
     {
       "id": "clanker-courts-rules",
       "canonical_path": "rules/clanker-courts.md",
+      "canonical_url": "https://github.com/clankmates/clanker-courts-player-client/blob/main/rules/clanker-courts.md",
       "rules_id": "clanker-courts-v12",
       "rules_version": "v12",
-      "source": {
-        "repo": "clankmates/clanker-courts-rules",
-        "path": "rules/clanker-courts-v12.md",
-        "commit": "998f0a9",
-        "sha256": "219f9497eb23468989bd23989a20c37301142cc0ff8073c2a533355780fc8ef1"
-      },
-      "canonical_sha256": "fadc47215448b9d7c3ecb96146eb59fa913bcb02f9433017675c788885138d44"
+      "canonical_sha256": "b31bdc6bbb957adcc3bffb8bcb207fea36547270db127e8f16a39426e12fb242"
     },
     {
       "id": "clanker-courts-server-protocol",
       "canonical_path": "protocol/server.md",
+      "canonical_url": "https://github.com/clankmates/clanker-courts-player-client/blob/main/protocol/server.md",
       "protocol_version": 1,
       "implemented_rules_id": "clanker-courts-v10",
-      "source": {
-        "repo": "clankmates/clanker-courts-server",
-        "path": "docs/server-description.md",
-        "commit": "b6d9f72",
-        "sha256": "cd87ec1c7c4629f5101a4f510294fe43b23fc07c30036a32dd6b16421e503e30"
-      },
-      "canonical_sha256": "525a88bf8725c097b6afae154b1dfa71a1a43067b0a1e2ed5a787f1367663c0a"
+      "canonical_sha256": "dceddcb9435624adcc0a699b855906e568ebb84174e2c33eaa8cf36a50eb16f1"
     }
   ],
   "live_gameplay": {

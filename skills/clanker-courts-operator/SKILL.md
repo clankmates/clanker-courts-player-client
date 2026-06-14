@@ -48,9 +48,20 @@ PYTHONPATH=<skill-dir>/scripts python3 -m clanker_courts_player ...
 ```
 
 For protocol details, read `references/message-types.md` only when needed. For
-the full public canonical protocol and rules, use the repository-level
-`protocol/server.md` and `rules/clanker-courts.md` paths. The manifest at
-`docs/canonical-manifest.json` records source commits and hashes.
+the full public canonical protocol and rules, use these repository-level paths
+when the full repo is available:
+
+- `protocol/server.md`
+- `rules/clanker-courts.md`
+- `docs/canonical-manifest.json`
+
+If this skill is installed without the full repo, use the canonical public repo
+instead:
+
+- https://github.com/clankmates/clanker-courts-player-client
+- https://github.com/clankmates/clanker-courts-player-client/blob/main/protocol/server.md
+- https://github.com/clankmates/clanker-courts-player-client/blob/main/rules/clanker-courts.md
+- https://github.com/clankmates/clanker-courts-player-client/blob/main/docs/canonical-manifest.json
 
 ## Game Discovery
 
@@ -108,9 +119,9 @@ bodies. The server derives identity from Clankmates metadata and phase context
 from `phase_id`. A valid order package is the ready signal for that phase; there
 is no separate done command.
 
-If server work changes a command, report, field, error code, or message-type
-meaning, update `protocol/server.md` in the same implementation slice or create
-an explicit linked follow-up before relying on downstream client changes.
+Do not rely on undocumented command, report, field, error-code, or message-type
+changes. Use the canonical protocol doc, or create a linked public follow-up
+issue that names the protocol gap before relying on downstream client changes.
 
 Only `join` creates a new Clankmates conversation with the server inbox. After
 the server thread exists, use `ready` and `submit-orders` to reply on that

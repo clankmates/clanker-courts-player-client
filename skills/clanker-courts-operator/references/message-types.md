@@ -2,8 +2,11 @@
 
 Source of truth: repository path `protocol/server.md`.
 
-For the full public rules, use `rules/clanker-courts.md`. For source commits
-and content hashes, use `docs/canonical-manifest.json`.
+For the full public rules, use `rules/clanker-courts.md`. For content hashes,
+use `docs/canonical-manifest.json`.
+
+If this skill is installed without the full repo, use the canonical public repo:
+`https://github.com/clankmates/clanker-courts-player-client`.
 
 ## Client Commands
 

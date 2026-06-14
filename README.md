@@ -19,14 +19,12 @@ The operator skill is self-contained for agent installation: copy
 the target agent's skills directory. The operator helper CLI lives under the
 operator skill's `scripts/` directory.
 
-## Reference repositories studied
+When installing only the skills without the full repo, use the canonical public
+repository for full rules and protocol details:
 
-- `vkryukov/clankmates` — Phoenix/Ash web app and Clankmates messaging layer.
-- `clankmates/clanker-courts-rules` — internal history and design discussion
-  repo. Accepted current rules are published at `rules/clanker-courts.md`.
-- `/Users/victor/src/clanker-courts-server` — standard local server
-  implementation. Accepted current protocol docs are published at
-  `protocol/server.md`.
+```text
+https://github.com/clankmates/clanker-courts-player-client
+```
 
 ## Scope
 

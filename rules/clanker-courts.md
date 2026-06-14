@@ -1,12 +1,9 @@
 ---
 canonical_path: rules/clanker-courts.md
+canonical_repository: https://github.com/clankmates/clanker-courts-player-client
 document_id: clanker-courts-rules
 rules_id: clanker-courts-v12
 rules_version: v12
-source_repo: clankmates/clanker-courts-rules
-source_path: rules/clanker-courts-v12.md
-source_commit: 998f0a9
-source_sha256: 219f9497eb23468989bd23989a20c37301142cc0ff8073c2a533355780fc8ef1
 last_reviewed: 2026-06-14
 status: current-public-canonical
 ---
@@ -14,9 +11,8 @@ status: current-public-canonical
 # Clanker Courts
 
 This stable, versionless path is the public canonical rules document for
-offline preparation. Historical drafts and design discussions remain in
-`clankmates/clanker-courts-rules`; when those internal rules become current,
-copy the accepted text here and update the metadata above.
+offline preparation. Version and review metadata live in this document rather
+than in the file path.
 
 During live games, server-published setup/current-state metadata is
 authoritative for the active game even when it names a different rules id.
