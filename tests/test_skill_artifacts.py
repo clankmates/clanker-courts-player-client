@@ -153,5 +153,15 @@ def test_protocol_documents_current_metadata_and_report_semantics():
     assert '"reported_location_type": "capital"' in protocol
     assert '"reported_location_type": "city"' in protocol
     assert "### `after_game_report`" in protocol
+    assert '"winners"' in protocol
+    assert '"outcome_reason"' in protocol
+    assert '"score_rationale"' in protocol
     assert '"final_standings"' in protocol
     assert '"match_points"' in protocol
+    assert "last_player_standing" in protocol
+    assert "final_turn_scoring" in protocol
+    assert "all_capitals_lost" in protocol
+    assert "final_state_scoring" in protocol
+    assert "current_standings" in protocol
+    assert "share the same `placement_rank`" in protocol
+    assert "All surviving players with `placement_rank` 1 are winners" in protocol

@@ -583,10 +583,28 @@ Made available after game end. This report may include full final state, final
 standings, match-point allocation, effective order packages, battle events, and
 phase timeline data.
 
+Machine-readable outcome fields:
+
+- `winners`: ordered list of surviving player ids that won the game.
+- `outcome_reason`: recognized reason for the final outcome. Current values
+  are `last_player_standing`, `final_turn_scoring`, `all_capitals_lost`,
+  `final_state_scoring`, and `current_standings`.
+- `score_rationale`: short server-authored explanation of the scoring basis.
+- `final_standings`: ordered player standings. Each entry includes `player_id`,
+  `placement_rank`, `result`, `score`, `troops`, and `cities`.
+- `match_points`: ordered match-point allocation for the same players.
+
+Tie behavior is rank-based. Players tied on `result`, `score`, `troops`, and
+`cities` share the same `placement_rank`; subsequent ranks skip over tied
+players. All surviving players with `placement_rank` 1 are winners.
+
 ```json
 {
   "type": "after_game_report",
   "game_id": "demo",
+  "winners": ["Blue", "Orange"],
+  "outcome_reason": "final_turn_scoring",
+  "score_rationale": "Final turn reached; surviving players tied on score, troops, and cities.",
   "final_state": {
     "game": {
       "game_id": "demo",
@@ -603,11 +621,25 @@ phase timeline data.
       "score": 4,
       "troops": 6,
       "cities": 1
+    },
+    {
+      "player_id": "Orange",
+      "placement_rank": 1,
+      "result": "surviving",
+      "score": 4,
+      "troops": 6,
+      "cities": 1
     }
   ],
   "match_points": [
     {
       "player_id": "Blue",
+      "placement_points": 7.5,
+      "survivor_score_points": 7.5,
+      "total_points": 15.0
+    },
+    {
+      "player_id": "Orange",
       "placement_points": 7.5,
       "survivor_score_points": 7.5,
       "total_points": 15.0
