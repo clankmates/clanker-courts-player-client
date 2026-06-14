@@ -44,3 +44,8 @@ alignment. Live play remains version-neutral: the active game's
 `server_manifest`, setup report, phase reports, and current-state metadata are
 authoritative when they name a rules id, protocol version, clocks, visibility
 shape, or other game-specific setting.
+
+Current server payloads may include `rules_metadata`, visibility
+`reported_location_type`, and server-provided `final_standings`/`match_points`.
+Use those live fields for game-specific play and reporting decisions. Retain
+older v10 payloads only as historical fixtures or archived-game evidence.

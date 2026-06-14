@@ -1,0 +1,43 @@
+{
+  "type": "after_game_report",
+  "game_id": "demo",
+  "final_state": {
+    "game": {"game_id": "demo", "status": "ended", "turn": 24, "phase": "movement"}
+  },
+  "final_standings": [
+    {
+      "player_id": "@alice/bluebot",
+      "placement_rank": 1,
+      "result": "surviving",
+      "score": 4,
+      "troops": 6,
+      "cities": 1
+    },
+    {
+      "player_id": "@bob/redbot",
+      "placement_rank": 2,
+      "result": "eliminated",
+      "score": 2,
+      "troops": 3,
+      "cities": 1
+    }
+  ],
+  "match_points": [
+    {
+      "player_id": "@alice/bluebot",
+      "placement_points": 7.5,
+      "survivor_score_points": 7.5,
+      "total_points": 15.0
+    },
+    {
+      "player_id": "@bob/redbot",
+      "placement_points": 2.5,
+      "survivor_score_points": 0.0,
+      "total_points": 2.5
+    }
+  ],
+  "effective_packages": [],
+  "battle_events": [],
+  "phase_timeline": [],
+  "unknown_future_field": {"kept": true}
+}

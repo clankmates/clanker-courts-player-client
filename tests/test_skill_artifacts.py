@@ -59,6 +59,10 @@ def test_canonical_docs_workflow_is_documented():
     assert "/Users/" not in agents
     assert "clanker-courts-server" not in readme
     assert "clanker-courts-rules" not in readme
+    assert "reported_location_type" in workflow
+    assert "final_standings" in workflow
+    assert "match_points" in workflow
+    assert "historical fixtures" in workflow
 
 
 def test_operator_skill_is_self_contained():
@@ -90,6 +94,10 @@ def test_operator_skill_is_protocol_and_state_only():
     assert "phase_id" in normalized_text
     assert "protocol/server.md" in normalized_text
     assert "rules/clanker-courts.md" in normalized_text
+    assert "rules_metadata" in normalized_text
+    assert "reported_location_type" in normalized_text
+    assert "final_standings" in normalized_text
+    assert "match_points" in normalized_text
     assert "https://github.com/clankmates/clanker-courts-player-client" in text
 
 
@@ -128,3 +136,21 @@ def test_autoplayer_skill_depends_on_operator_skill():
     assert "https://github.com/clankmates/clanker-courts-player-client" in text
     assert "Stay" in text
     assert "version-neutral" in text
+    assert "reported_location_type" in text
+    assert "final_standings" in text
+    assert "match_points" in text
+
+
+def test_protocol_documents_current_metadata_and_report_semantics():
+    protocol = (ROOT / "protocol/server.md").read_text()
+
+    assert "Protocol baseline implemented rules id: `clanker-courts-v10`" in protocol
+    assert '"rules": "clanker-courts-v12"' in protocol
+    assert '"rules_metadata"' in protocol
+    assert '"rules_path": "rules/clanker-courts.md"' in protocol
+    assert '"protocol_path": "protocol/server.md"' in protocol
+    assert '"reported_location_type": "capital"' in protocol
+    assert '"reported_location_type": "city"' in protocol
+    assert "### `after_game_report`" in protocol
+    assert '"final_standings"' in protocol
+    assert '"match_points"' in protocol

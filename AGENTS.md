@@ -39,6 +39,10 @@ or create a linked public follow-up issue that names the protocol gap.
 - The public server command protocol uses `join_game`, `ready_to_start`, and `order_package` sent to one server typed inbox.
 - Do not reintroduce legacy `game_started`, `phase_request`, `done_phase`, client-supplied handles, or identity-bearing `order_response` bodies.
 - Keep live gameplay version-neutral: the active game's `server_manifest`, setup reports, phase reports, and current-state metadata are authoritative when they name a rules id, protocol version, clocks, or other game-specific settings.
+- Treat current server `rules_metadata`, visibility `reported_location_type`,
+  and server-provided final standings/match points as authoritative when
+  present. Remaining v10 payloads are historical fixtures or archived games,
+  not current defaults.
 
 ## Planning standards
 

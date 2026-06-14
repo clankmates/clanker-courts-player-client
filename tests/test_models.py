@@ -2,9 +2,9 @@ import json
 from pathlib import Path
 
 import pytest
-
 from clanker_courts_player.errors import StructuredValidationError
 from clanker_courts_player.models import (
+    AfterGameReport,
     JoinAck,
     JoinGame,
     MovementPhaseReport,
@@ -14,6 +14,7 @@ from clanker_courts_player.models import (
     PeerDiplomacyMessage,
     ReadyCheck,
     ReadyToStart,
+    ServerManifest,
     SetupReport,
     StartCancelled,
     parse_message_body,
@@ -25,6 +26,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 @pytest.mark.parametrize(
     ("fixture_name", "model"),
     [
+        ("server_manifest.json", ServerManifest),
         ("join_game.json", JoinGame),
         ("join_ack.json", JoinAck),
         ("ready_check.json", ReadyCheck),
@@ -32,6 +34,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
         ("start_cancelled.json", StartCancelled),
         ("setup_report.json", SetupReport),
         ("movement_phase_report.json", MovementPhaseReport),
+        ("after_game_report.json", AfterGameReport),
         ("order_package.json", OrderPackage),
         ("order_accepted.json", OrderAccepted),
         ("order_rejected.json", OrderRejected),
@@ -46,6 +49,42 @@ def test_valid_fixtures_parse_and_round_trip_preserving_unknown_fields(fixture_n
 
     assert dumped == raw
     assert dumped["unknown_future_field"] == raw["unknown_future_field"]
+
+
+def test_current_setup_metadata_points_to_public_canonical_docs():
+    raw = json.loads((FIXTURES / "setup_report.json").read_text())
+
+    parsed = SetupReport.model_validate(raw)
+
+    assert parsed.rules == "clanker-courts-v12"
+    assert parsed.rules_metadata is not None
+    assert parsed.rules_metadata["rules_path"] == "rules/clanker-courts.md"
+    assert parsed.rules_metadata["protocol_path"] == "protocol/server.md"
+    assert parsed.rules_metadata["canonical_manifest_path"] == "docs/canonical-manifest.json"
+    visible_locations = parsed.visibility["locations"]
+    assert visible_locations[0]["reported_location_type"] == "capital"
+    assert visible_locations[1]["reported_location_type"] == "city"
+
+
+def test_historical_v10_setup_fixture_is_supported_but_not_current_default():
+    raw = json.loads((FIXTURES / "historical_v10_setup_report.json").read_text())
+
+    parsed = SetupReport.model_validate(raw)
+
+    assert parsed.rules == "clanker-courts-v10"
+    assert parsed.rules_metadata is None
+    assert raw["fixture_note"] == "Historical v10 payload retained for backward compatibility only."
+
+
+def test_after_game_report_preserves_final_standings_and_match_points():
+    raw = json.loads((FIXTURES / "after_game_report.json").read_text())
+
+    parsed = AfterGameReport.model_validate(raw)
+
+    assert parsed.final_standings is not None
+    assert parsed.match_points is not None
+    assert parsed.final_standings[0]["placement_rank"] == 1
+    assert parsed.match_points[0]["total_points"] == 15.0
 
 
 @pytest.mark.parametrize(
