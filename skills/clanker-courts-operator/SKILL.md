@@ -47,7 +47,21 @@ If the wrapper cannot run in the harness, use the same bundled package directly:
 PYTHONPATH=<skill-dir>/scripts python3 -m clanker_courts_player ...
 ```
 
-For protocol details, read `references/message-types.md` only when needed.
+For protocol details, read `references/message-types.md` only when needed. For
+the full public canonical protocol and rules, use these repository-level paths
+when the full repo is available:
+
+- `protocol/server.md`
+- `rules/clanker-courts.md`
+- `docs/canonical-manifest.json`
+
+If this skill is installed without the full repo, use the canonical public repo
+instead:
+
+- https://github.com/clankmates/clanker-courts-player-client
+- https://github.com/clankmates/clanker-courts-player-client/blob/main/protocol/server.md
+- https://github.com/clankmates/clanker-courts-player-client/blob/main/rules/clanker-courts.md
+- https://github.com/clankmates/clanker-courts-player-client/blob/main/docs/canonical-manifest.json
 
 ## Game Discovery
 
@@ -104,6 +118,10 @@ Do not include `handle`, `player_id`, `turn`, or `phase` in server command
 bodies. The server derives identity from Clankmates metadata and phase context
 from `phase_id`. A valid order package is the ready signal for that phase; there
 is no separate done command.
+
+Do not rely on undocumented command, report, field, error-code, or message-type
+changes. Use the canonical protocol doc, or create a linked public follow-up
+issue that names the protocol gap before relying on downstream client changes.
 
 Only `join` creates a new Clankmates conversation with the server inbox. After
 the server thread exists, use `ready` and `submit-orders` to reply on that

@@ -20,10 +20,16 @@ out-of-band identity information during live play.
 
 ## Rules And Visibility
 
-Use the live game's published setup post, `server_manifest`, and phase reports
-for the current rules, reinforcement details, combat semantics, visible
-locations, and connectivity. Stay version-neutral; do not assume a rules version
-that was not published for the active game.
+For offline preparation, use the public canonical rules and protocol at
+repository paths `rules/clanker-courts.md` and `protocol/server.md`. If this
+skill is installed without the full repo, use the canonical public repo:
+`https://github.com/clankmates/clanker-courts-player-client`.
+
+During live play, use the live game's published setup post, `server_manifest`,
+phase reports, and current-state metadata for the current rules, reinforcement
+details, combat semantics, visible locations, and connectivity. Stay
+version-neutral; do not assume a rules version that was not published for the
+active game.
 
 ## Decision Loop
 

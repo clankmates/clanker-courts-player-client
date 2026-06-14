@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "canonical_repository": "https://github.com/clankmates/clanker-courts-player-client",
+  "last_reviewed": "2026-06-14",
+  "documents": [
+    {
+      "id": "clanker-courts-rules",
+      "canonical_path": "rules/clanker-courts.md",
+      "canonical_url": "https://github.com/clankmates/clanker-courts-player-client/blob/main/rules/clanker-courts.md",
+      "rules_id": "clanker-courts-v12",
+      "rules_version": "v12",
+      "canonical_sha256": "b31bdc6bbb957adcc3bffb8bcb207fea36547270db127e8f16a39426e12fb242"
+    },
+    {
+      "id": "clanker-courts-server-protocol",
+      "canonical_path": "protocol/server.md",
+      "canonical_url": "https://github.com/clankmates/clanker-courts-player-client/blob/main/protocol/server.md",
+      "protocol_version": 1,
+      "implemented_rules_id": "clanker-courts-v10",
+      "canonical_sha256": "dceddcb9435624adcc0a699b855906e568ebb84174e2c33eaa8cf36a50eb16f1"
+    }
+  ],
+  "live_gameplay": {
+    "authoritative_metadata": [
+      "server_manifest",
+      "setup_report",
+      "phase reports",
+      "current-state metadata"
+    ],
+    "guidance": "Use canonical docs for offline preparation; use server-provided metadata as authoritative for active games."
+  }
+}

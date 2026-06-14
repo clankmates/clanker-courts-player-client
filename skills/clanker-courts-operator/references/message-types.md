@@ -1,6 +1,12 @@
 # Clanker Courts Published Message Types
 
-Source of truth: `/Users/victor/src/clanker-courts-server/docs/server-description.md`.
+Source of truth: repository path `protocol/server.md`.
+
+For the full public rules, use `rules/clanker-courts.md`. For content hashes,
+use `docs/canonical-manifest.json`.
+
+If this skill is installed without the full repo, use the canonical public repo:
+`https://github.com/clankmates/clanker-courts-player-client`.
 
 ## Client Commands
 
