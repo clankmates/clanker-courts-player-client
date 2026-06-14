@@ -28,6 +28,39 @@ def decode_clankmates_message(message: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def payload_type(message: dict[str, Any]) -> str | None:
+    body = message.get("body")
+    if isinstance(body, dict) and isinstance(body.get("type"), str):
+        return body["type"]
+    return None
+
+
+def unprocessed_messages(
+    messages: list[dict[str, Any]], *, processed_message_ids: set[str]
+) -> list[dict[str, Any]]:
+    unseen: list[dict[str, Any]] = []
+    for message in messages:
+        message_id = message.get("message_id")
+        if isinstance(message_id, str) and message_id in processed_message_ids:
+            continue
+        unseen.append(message)
+    return unseen
+
+
+def raw_archive_record(
+    message: dict[str, Any], *, local_timestamp: str | None = None
+) -> dict[str, Any]:
+    return {
+        "message_id": message.get("message_id"),
+        "thread_id": message.get("thread_id"),
+        "server_timestamp": message.get("timestamp"),
+        "local_timestamp": local_timestamp or _utc_now(),
+        "payload_type": payload_type(message),
+        "body": message.get("body"),
+        "raw": message.get("raw"),
+    }
+
+
 PHASE_OPENING_TYPES = {"setup_report", "movement_phase_report", "movement_result_report"}
 
 
@@ -143,6 +176,10 @@ def _message_timestamp(message: dict[str, Any]) -> str | None:
         if isinstance(value, str):
             return value
     return None
+
+
+def _utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _sort_timestamp(message: dict[str, Any]) -> datetime:

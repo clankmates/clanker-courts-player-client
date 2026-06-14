@@ -28,6 +28,9 @@ def test_module_help_lists_published_protocol_commands():
     for command in [
         "preflight",
         "join",
+        "find-threads",
+        "freshen",
+        "watch-messages",
         "poll",
         "ready",
         "submit-orders",
@@ -206,3 +209,69 @@ def test_archive_thread_dry_run_prints_thread_id():
         "profile": "p",
         "thread_id": "thread-1",
     }
+
+
+def test_freshen_dry_run_uses_changes_primitive(tmp_path):
+    result = run_cli(
+        "freshen",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--state",
+        str(tmp_path / "state.json"),
+        "--since-cache",
+        "--save-cache",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["primitive"] == "inbox messages changes"
+    assert payload["since_cache"] is True
+    assert payload["save_cache"] is True
+
+
+def test_find_threads_dry_run_uses_search_and_freshness_filters():
+    result = run_cli(
+        "find-threads",
+        "--profile",
+        "p",
+        "--participant",
+        "@gamemaster/clanker_courts",
+        "--query",
+        "server_manifest",
+        "--since-cache",
+        "--save-cache",
+        "--limit",
+        "5",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["primitive"] == "inbox list"
+    assert payload["participant"] == "@gamemaster/clanker_courts"
+    assert payload["query"] == "server_manifest"
+    assert payload["since_cache"] is True
+    assert payload["save_cache"] is True
+    assert payload["limit"] == 5
+
+
+def test_watch_messages_dry_run_uses_watch_primitive(tmp_path):
+    result = run_cli(
+        "watch-messages",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--state",
+        str(tmp_path / "state.json"),
+        "--once",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["primitive"] == "inbox watch messages"
+    assert payload["once"] is True

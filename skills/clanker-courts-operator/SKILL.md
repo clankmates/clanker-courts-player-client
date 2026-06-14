@@ -83,11 +83,19 @@ With `profile`, `server`, and `game_id` known:
 
 1. Run preflight.
 2. Send `join_game` to the server inbox.
-3. List inbox threads and inspect recent server threads until you find the
-   matching `join_ack`, `ready_check`, or `setup_report` for the game.
+3. Use participant/search filters and local timestamp cache primitives to find
+   recent server threads until you find the matching `join_ack`, `ready_check`,
+   or `setup_report` for the game:
+
+   ```bash
+   <skill-dir>/scripts/clanker-courts find-threads --profile <profile> --participant <server-inbox> --query <game-id> --since-cache --save-cache --limit 20
+   ```
+
 4. Save that Clankmates thread ID in local state as the server thread.
 5. Send later server commands by replying on the saved server thread.
-6. Poll the saved server thread with bounded reads during play.
+6. Refresh the saved server thread with `freshen` during bootstrap and with
+   `watch-messages` for long-running live play when the installed `clankm`
+   supports watch mode.
 7. After copying processed messages into the raw archive and updating state,
    archive the processed thread if desired. Clankmates unarchives a thread when
    a new message is sent to it, so archiving is an inbox-cleanup action, not a
@@ -136,9 +144,42 @@ the server thread exists, use `ready`, `submit-orders`, and `send-message` to
 reply on that thread. Starting another channel conversation to the same server
 can be rejected by Clankmates.
 
-## Polling And State
+## Freshness And State
 
-Poll Clankmates with bounded reads:
+For one-shot freshness checks, use the lightest available Clankmates primitive.
+Prefer saved cache watermarks so the CLI owns remote cursor details and the
+player client only tracks processed message IDs for audit and duplicate
+suppression:
+
+```bash
+<skill-dir>/scripts/clanker-courts freshen --profile <profile> --thread-id <thread-id> --state <artifact-dir>/state.json --since-cache --save-cache
+```
+
+The helper calls `clankm inbox messages changes <thread-id>` with `--since`,
+`--since-cache`, or `--save-cache` when supplied. `--since-cache` and
+`--save-cache` are boolean `clankm` flags; the cache scope is owned by
+`clankm`, not named by the player client. If the installed `clankm` is
+too old for `inbox messages changes`, it falls back to one bounded
+`inbox show --limit <n>` read and still suppresses duplicates through local
+processed-message IDs. Treat that fallback as a compatibility path, not the
+normal live loop.
+
+When `clankm inbox watch messages <thread-id>` is available, use watch mode for
+long-running play:
+
+```bash
+<skill-dir>/scripts/clanker-courts watch-messages --profile <profile> --thread-id <thread-id> --state <artifact-dir>/state.json
+```
+
+Each JSONL watch record is treated as authoritative incremental message input.
+The helper decodes each line as it arrives, appends unseen messages to
+`raw_messages.jsonl`, and updates `processed_message_ids` in state. Use
+`--once` when you need a bounded smoke test or single watch cycle. If the
+harness needs tighter control over process lifetime, run
+`clankm inbox watch messages <thread-id>` directly and feed each JSONL record
+through equivalent decode/archive logic.
+
+Use bounded polling only for manual recovery or post-game/debug inspection:
 
 ```bash
 <skill-dir>/scripts/clanker-courts poll --profile <profile> --thread-id <thread-id> --limit 50
@@ -169,11 +210,16 @@ Maintain a JSON state file with:
   promise ledger.
 - historical/fallback direct diplomacy sent/received if such traffic is
   retained.
+- `processed_message_ids` for duplicate suppression across `freshen` and
+  `watch-messages` cycles.
 
 Ignore unrelated `game_id` messages. Preserve malformed or unknown messages in
 the raw archive before ignoring them. Track processed message IDs in local state
 for the active game thread; archiving is optional inbox cleanup after state has
-been updated.
+been updated. Raw archive records are append-only JSONL and include message ID,
+thread ID, server timestamp, local timestamp, decoded payload type, decoded
+body, and original raw Clankmates record. Full historical pagination or export
+is a manual post-game/debug path, not a live gameplay dependency.
 
 ## Brokered Negotiation Screening
 

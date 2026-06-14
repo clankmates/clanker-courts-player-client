@@ -7,6 +7,9 @@ from typing import Any
 COMMANDS = [
     "preflight",
     "join",
+    "find-threads",
+    "freshen",
+    "watch-messages",
     "poll",
     "ready",
     "submit-orders",
@@ -122,6 +125,45 @@ def _preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+def _find_threads(args: argparse.Namespace) -> int:
+    from .clankmates import ClankmatesError
+
+    if args.dry_run:
+        _print_json(
+            {
+                "ok": True,
+                "dry_run": True,
+                "profile": args.profile,
+                "status": args.status,
+                "participant": args.participant,
+                "query": args.query,
+                "since": args.since,
+                "since_cache": args.since_cache,
+                "save_cache": args.save_cache,
+                "limit": args.limit,
+                "primitive": "inbox list",
+            }
+        )
+        return 0
+
+    try:
+        result = _clankmates_client().list_threads(
+            args.profile,
+            status=args.status,
+            participant=args.participant,
+            query=args.query,
+            since=args.since,
+            since_cache=args.since_cache,
+            save_cache=args.save_cache,
+            limit=args.limit,
+        )
+    except ClankmatesError as exc:
+        _print_json(exc.to_dict())
+        return 1
+    _print_json({"ok": True, "primitive": "inbox list", "result": result})
+    return 0
+
+
 def _join(args: argparse.Namespace) -> int:
     body = {"type": "join_game", "game_id": args.game_id}
     return _send_or_preview(
@@ -219,6 +261,141 @@ def _poll(args: argparse.Namespace) -> int:
     return 0
 
 
+def _freshen(args: argparse.Namespace) -> int:
+    from .clankmates import ClankmatesError
+    from .messages import decode_clankmates_message
+    from .state_store import StateStore
+
+    if args.dry_run:
+        _print_json(
+            {
+                "ok": True,
+                "dry_run": True,
+                "profile": args.profile,
+                "thread_id": args.thread_id,
+                "state": args.state,
+                "primitive": "inbox messages changes",
+                "since": args.since,
+                "since_cache": args.since_cache,
+                "save_cache": args.save_cache,
+            }
+        )
+        return 0
+
+    client = _clankmates_client()
+    primitive = "inbox messages changes"
+    fallback_reason = None
+    try:
+        result = client.message_changes(
+            args.profile,
+            args.thread_id,
+            since=args.since,
+            since_cache=args.since_cache,
+            save_cache=args.save_cache,
+            query=args.query,
+        )
+    except ClankmatesError as exc:
+        if not _is_stale_cli_error(exc):
+            _print_json(exc.to_dict())
+            return 1
+        fallback_reason = exc.stderr or exc.stdout or str(exc)
+        primitive = "inbox show fallback"
+        try:
+            result = client.show_thread(args.profile, args.thread_id, limit=args.limit)
+        except ClankmatesError as fallback_exc:
+            _print_json(fallback_exc.to_dict())
+            return 1
+
+    messages = [decode_clankmates_message(message) for message in _result_messages(result)]
+    store = StateStore(args.state)
+    try:
+        state = store.load()
+    except FileNotFoundError:
+        state = {}
+    apply_result = store.apply_incremental_messages(state, messages)
+    _print_json(
+        {
+            **apply_result,
+            "thread_id": args.thread_id,
+            "primitive": primitive,
+            "fallback_reason": fallback_reason,
+            "no_changes": apply_result["processed"] == 0,
+        }
+    )
+    return 0
+
+
+def _watch_messages(args: argparse.Namespace) -> int:
+    from .clankmates import ClankmatesError
+    from .messages import decode_clankmates_message
+    from .state_store import StateStore
+
+    if args.dry_run:
+        _print_json(
+            {
+                "ok": True,
+                "dry_run": True,
+                "profile": args.profile,
+                "thread_id": args.thread_id,
+                "state": args.state,
+                "primitive": "inbox watch messages",
+                "once": args.once,
+                "since": args.since,
+                "since_cache": args.since_cache,
+            }
+        )
+        return 0
+
+    try:
+        records = _clankmates_client().iter_watch_messages(
+            args.profile,
+            args.thread_id,
+            once=args.once,
+            since=args.since,
+            since_cache=args.since_cache,
+            query=args.query,
+            limit=args.limit,
+        )
+        processed = 0
+        duplicates_skipped = 0
+        emitted = 0
+        store = StateStore(args.state)
+        try:
+            state = store.load()
+        except FileNotFoundError:
+            state = {}
+        for record in records:
+            message = decode_clankmates_message(record)
+            apply_result = store.apply_incremental_messages(state, [message])
+            state = store.load()
+            processed += apply_result["processed"]
+            duplicates_skipped += apply_result["duplicates_skipped"]
+            emitted += 1
+            _print_json(
+                {
+                    **apply_result,
+                    "thread_id": args.thread_id,
+                    "primitive": "inbox watch messages",
+                    "no_changes": apply_result["processed"] == 0,
+                }
+            )
+    except ClankmatesError as exc:
+        _print_json(exc.to_dict())
+        return 1
+    _print_json(
+        {
+            "ok": True,
+            "thread_id": args.thread_id,
+            "primitive": "inbox watch messages",
+            "processed": processed,
+            "duplicates_skipped": duplicates_skipped,
+            "records_seen": emitted,
+            "no_changes": processed == 0,
+        }
+    )
+    return 0
+
+
 def _archive_thread(args: argparse.Namespace) -> int:
     from .clankmates import ClankmatesError
 
@@ -240,6 +417,34 @@ def _archive_thread(args: argparse.Namespace) -> int:
         return 1
     _print_json({"ok": True, "thread_id": args.thread_id, "result": result})
     return 0
+
+
+def _result_messages(result: dict[str, Any]) -> list[dict[str, Any]]:
+    messages = result.get("messages")
+    if isinstance(messages, list):
+        return [message for message in messages if isinstance(message, dict)]
+    data = result.get("data")
+    if isinstance(data, dict) and isinstance(data.get("messages"), list):
+        return [message for message in data["messages"] if isinstance(message, dict)]
+    return []
+
+
+def _is_stale_cli_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    if hasattr(exc, "stderr"):
+        text = f"{text}\n{getattr(exc, 'stderr', '')}".lower()
+    if hasattr(exc, "stdout"):
+        text = f"{text}\n{getattr(exc, 'stdout', '')}".lower()
+    return any(
+        marker in text
+        for marker in (
+            "unknown command",
+            "no such command",
+            "unrecognized",
+            "unknown flag",
+            "invalid choice",
+        )
+    )
 
 
 def _state(args: argparse.Namespace) -> int:
@@ -283,6 +488,48 @@ def build_parser() -> argparse.ArgumentParser:
     join.add_argument("--game-id", required=True)
     join.add_argument("--dry-run", action="store_true")
     join.set_defaults(func=_join)
+
+    find_threads = subparsers.add_parser(
+        "find-threads", help="find inbox threads with participant/search freshness filters"
+    )
+    find_threads.add_argument("--profile", required=True)
+    find_threads.add_argument("--status", default="all")
+    find_threads.add_argument("--participant")
+    find_threads.add_argument("--query")
+    find_threads.add_argument("--since")
+    find_threads.add_argument("--since-cache", action="store_true")
+    find_threads.add_argument("--save-cache", action="store_true")
+    find_threads.add_argument("--limit", type=int, default=20)
+    find_threads.add_argument("--dry-run", action="store_true")
+    find_threads.set_defaults(func=_find_threads)
+
+    freshen = subparsers.add_parser(
+        "freshen", help="fetch new messages with clankm freshness primitives"
+    )
+    freshen.add_argument("--profile", required=True)
+    freshen.add_argument("--thread-id", required=True)
+    freshen.add_argument("--state", required=True)
+    freshen.add_argument("--since")
+    freshen.add_argument("--since-cache", action="store_true")
+    freshen.add_argument("--save-cache", action="store_true")
+    freshen.add_argument("--query")
+    freshen.add_argument("--limit", type=int, default=50)
+    freshen.add_argument("--dry-run", action="store_true")
+    freshen.set_defaults(func=_freshen)
+
+    watch = subparsers.add_parser(
+        "watch-messages", help="consume clankm inbox watch messages JSONL"
+    )
+    watch.add_argument("--profile", required=True)
+    watch.add_argument("--thread-id", required=True)
+    watch.add_argument("--state", required=True)
+    watch.add_argument("--once", action="store_true")
+    watch.add_argument("--since")
+    watch.add_argument("--since-cache", action="store_true")
+    watch.add_argument("--query")
+    watch.add_argument("--limit", type=int)
+    watch.add_argument("--dry-run", action="store_true")
+    watch.set_defaults(func=_watch_messages)
 
     poll = subparsers.add_parser("poll", help="read one Clankmates thread")
     poll.add_argument("--profile", required=True)

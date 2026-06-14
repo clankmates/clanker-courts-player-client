@@ -1,5 +1,7 @@
 import json
 import subprocess
+from io import StringIO
+from pathlib import Path
 
 import pytest
 from clanker_courts_player.clankmates import ClankmatesClient, ClankmatesError
@@ -37,6 +39,7 @@ def test_adapter_methods_parse_json_and_build_expected_commands():
             '{"handle":"bluebot"}',
             '{"threads":[]}',
             '{"messages":[]}',
+            '{"messages":[{"id":"m2"}]}',
             '{"archived":true}',
             '{"sent":true}',
         ]
@@ -51,11 +54,151 @@ def test_adapter_methods_parse_json_and_build_expected_commands():
     assert client.whoami("p") == {"handle": "bluebot"}
     assert client.list_threads("p") == {"threads": []}
     assert client.show_thread("p", "t1", limit=3) == {"messages": []}
+    assert client.message_changes(
+        "p", "t1", since="2026-06-14T10:00:00Z", since_cache=True, save_cache=True
+    ) == {"messages": [{"id": "m2"}]}
     assert client.archive_thread("p", "t1") == {"archived": True}
     assert client.send("p", "@server", {"type": "join_game"}) == {"sent": True}
     assert calls == [
         ["clankm", "--profile", "p", "auth", "whoami", "--json"],
         ["clankm", "--profile", "p", "inbox", "list", "--status", "all", "--json"],
+        ["clankm", "--profile", "p", "inbox", "show", "t1", "--limit", "3", "--json"],
+        [
+            "clankm",
+            "--profile",
+            "p",
+            "inbox",
+            "messages",
+            "changes",
+            "t1",
+            "--since",
+            "2026-06-14T10:00:00Z",
+            "--since-cache",
+            "--save-cache",
+            "--json",
+        ],
+        ["clankm", "--profile", "p", "inbox", "archive", "t1", "--json"],
+        [
+            "clankm",
+            "--profile",
+            "p",
+            "inbox",
+            "send",
+            "@server",
+            "--payload",
+            '{"type":"join_game"}',
+            "--json",
+        ],
+    ]
+
+
+def test_watch_messages_parses_jsonl_records():
+    calls = []
+
+    class FakeProcess:
+        stdout = StringIO('{"id":"m1"}\n{"id":"m2","body":"{}"}\n')
+        stderr = StringIO("")
+
+        def wait(self):
+            return 0
+
+    def popen_runner(argv, **kwargs):
+        calls.append(argv)
+        return FakeProcess()
+
+    client = ClankmatesClient(popen_runner=popen_runner)
+
+    assert client.watch_messages("p", "t1") == [{"id": "m1"}, {"id": "m2", "body": "{}"}]
+    assert calls == [["clankm", "--profile", "p", "inbox", "watch", "messages", "t1", "--once"]]
+
+
+def test_list_threads_supports_participant_search_and_freshness_flags():
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, stdout='{"threads":[]}', stderr="")
+
+    client = ClankmatesClient(runner=runner)
+
+    assert client.list_threads(
+        "p",
+        participant="@gamemaster/clanker_courts",
+        query="server_manifest",
+        since_cache=True,
+        save_cache=True,
+        limit=5,
+    ) == {"threads": []}
+    assert calls == [
+        [
+            "clankm",
+            "--profile",
+            "p",
+            "inbox",
+            "list",
+            "--status",
+            "all",
+            "--participant",
+            "@gamemaster/clanker_courts",
+            "--query",
+            "server_manifest",
+            "--since-cache",
+            "--save-cache",
+            "--limit",
+            "5",
+            "--json",
+        ]
+    ]
+
+
+def test_watch_messages_reports_malformed_jsonl_line():
+    class FakeProcess:
+        stdout = StringIO('{"id":"m1"}\n{bad\n')
+        stderr = StringIO("")
+
+        def poll(self):
+            return 0
+
+        def terminate(self):
+            pass
+
+        def kill(self):
+            pass
+
+        def wait(self):
+            return 0
+
+    def popen_runner(argv, **kwargs):
+        return FakeProcess()
+
+    client = ClankmatesClient(popen_runner=popen_runner)
+
+    with pytest.raises(ClankmatesError) as exc_info:
+        client.watch_messages("p", "t1")
+
+    assert exc_info.value.to_dict()["decode_error"].startswith("line 2:")
+
+
+def test_legacy_polling_command_still_available_for_manual_debug():
+    calls = []
+    responses = iter(
+        [
+            '{"messages":[]}',
+            '{"archived":true}',
+            '{"sent":true}',
+        ]
+    )
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, stdout=next(responses), stderr="")
+
+    client = ClankmatesClient(runner=runner)
+
+    assert client.show_thread("p", "t1", limit=3) == {"messages": []}
+    assert client.archive_thread("p", "t1") == {"archived": True}
+    assert client.send("p", "@server", {"type": "join_game"}) == {"sent": True}
+    assert calls == [
         ["clankm", "--profile", "p", "inbox", "show", "t1", "--limit", "3", "--json"],
         ["clankm", "--profile", "p", "inbox", "archive", "t1", "--json"],
         [
@@ -231,3 +374,175 @@ def test_submit_orders_cli_replies_on_server_thread(monkeypatch, capsys):
         )
     ]
     assert payload["thread_id"] == "thread-1"
+
+
+def test_freshen_cli_uses_message_changes_and_archives_incremental_messages(
+    monkeypatch, capsys, tmp_path
+):
+    calls = []
+
+    class FakeClient:
+        def message_changes(self, profile, thread_id, *, since, since_cache, save_cache, query):
+            calls.append((profile, thread_id, since, since_cache, save_cache))
+            return {
+                "messages": [
+                    {
+                        "id": "m1",
+                        "thread_id": "thread-1",
+                        "created_at": "2026-06-14T10:00:00Z",
+                        "attributes": {"body": '{"type":"ready_check","game_id":"demo"}'},
+                    }
+                ]
+            }
+
+    import clanker_courts_player.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "_clankmates_client", lambda: FakeClient())
+    state_path = tmp_path / "state.json"
+
+    exit_code = main(
+        [
+            "freshen",
+            "--profile",
+            "p",
+            "--thread-id",
+            "thread-1",
+            "--state",
+            str(state_path),
+            "--since-cache",
+            "--save-cache",
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert calls == [("p", "thread-1", None, True, True)]
+    assert payload["primitive"] == "inbox messages changes"
+    assert payload["processed"] == 1
+    archive = tmp_path / "raw_messages.jsonl"
+    rows = [json.loads(line) for line in archive.read_text().splitlines()]
+    assert rows[0]["message_id"] == "m1"
+    assert rows[0]["payload_type"] == "ready_check"
+
+
+def test_freshen_cli_reports_no_changes_without_archive(monkeypatch, capsys, tmp_path):
+    class FakeClient:
+        def message_changes(self, profile, thread_id, *, since, since_cache, save_cache, query):
+            return {"messages": []}
+
+    import clanker_courts_player.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "_clankmates_client", lambda: FakeClient())
+
+    exit_code = main(
+        [
+            "freshen",
+            "--profile",
+            "p",
+            "--thread-id",
+            "thread-1",
+            "--state",
+            str(tmp_path / "state.json"),
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert payload["no_changes"] is True
+    assert payload["processed"] == 0
+    assert not (tmp_path / "raw_messages.jsonl").exists()
+
+
+def test_freshen_cli_falls_back_to_bounded_show_for_stale_clankm(
+    monkeypatch, capsys, tmp_path
+):
+    calls = []
+
+    class FakeClient:
+        def message_changes(self, profile, thread_id, *, since, since_cache, save_cache, query):
+            calls.append("changes")
+            raise ClankmatesError(
+                command=["clankm", "inbox", "messages", "changes"],
+                returncode=2,
+                stdout="",
+                stderr="unknown command: changes",
+            )
+
+        def show_thread(self, profile, thread_id, *, limit=10, cursor=None):
+            calls.append(("show", limit, cursor))
+            return {
+                "messages": [
+                    {
+                        "id": "m2",
+                        "thread_id": "thread-1",
+                        "created_at": "2026-06-14T10:00:00Z",
+                        "attributes": {"body": '{"type":"setup_report","game_id":"demo"}'},
+                    }
+                ]
+            }
+
+    import clanker_courts_player.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "_clankmates_client", lambda: FakeClient())
+
+    exit_code = main(
+        [
+            "freshen",
+            "--profile",
+            "p",
+            "--thread-id",
+            "thread-1",
+            "--state",
+            str(tmp_path / "state.json"),
+            "--limit",
+            "7",
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert calls == ["changes", ("show", 7, None)]
+    assert payload["primitive"] == "inbox show fallback"
+    assert payload["processed"] == 1
+
+
+def test_watch_messages_cli_archives_jsonl_records(monkeypatch, capsys, tmp_path):
+    class FakeClient:
+        def iter_watch_messages(
+            self, profile, thread_id, *, once, since, since_cache, query, limit
+        ):
+            yield from [
+                {
+                    "id": "m3",
+                    "thread_id": "thread-1",
+                    "created_at": "2026-06-14T10:00:00Z",
+                    "attributes": {"body": '{"type":"movement_phase_report","game_id":"demo"}'},
+                }
+            ]
+
+    import clanker_courts_player.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "_clankmates_client", lambda: FakeClient())
+
+    exit_code = main(
+        [
+            "watch-messages",
+            "--profile",
+            "p",
+            "--thread-id",
+            "thread-1",
+            "--state",
+            str(tmp_path / "state.json"),
+            "--once",
+        ]
+    )
+
+    output_rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    payload = output_rows[-1]
+    assert exit_code == 0
+    assert payload["primitive"] == "inbox watch messages"
+    assert payload["processed"] == 1
+    assert output_rows[0]["processed"] == 1
+    archive = Path(tmp_path / "raw_messages.jsonl")
+    rows = [json.loads(line) for line in archive.read_text().splitlines()]
+    assert rows[0]["payload_type"] == "movement_phase_report"
