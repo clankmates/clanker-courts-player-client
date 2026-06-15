@@ -1,16 +1,13 @@
 {
+  "type": "current_phase",
   "schema_version": 1,
   "request_id": "current-ended-1",
   "current_phase": null,
   "allowed_command": {
     "command": "get_after_game_report",
-    "accepting": true,
     "request": {
-      "schema_version": 1,
-      "request_id": "after-game-1",
-      "command": "get_after_game_report",
-      "game_id": "demo",
-      "player_id": "Blue"
+      "type": "get_after_game_report",
+      "game_id": "demo"
     }
   },
   "latest_report": {

@@ -82,7 +82,10 @@ def test_operator_skill_is_protocol_and_state_only():
     assert "must not rank moves" in normalized_text
     assert "clanker-courts submit-orders" in normalized_text
     assert "clanker-courts get-current-phase" in normalized_text
+    assert "clanker-courts get-after-game-report" in normalized_text
     assert "clanker-courts archive-thread" in normalized_text
+    assert "unique artifact directory" in normalized_text
+    assert "<agent-run-id>" in text
     assert "Game Discovery" in normalized_text
     assert "Brokered Negotiation Screening" in normalized_text
     assert "Clankmates unarchives a thread when a new message arrives" in normalized_text
@@ -151,7 +154,11 @@ def test_protocol_documents_current_metadata_and_report_semantics():
 
     assert "implemented_rules_id: clanker-courts-v12" in protocol
     assert "### `get_current_phase`" in protocol
-    assert '"command": "get_current_phase"' in protocol
+    assert '"type": "get_current_phase"' in protocol
+    assert "### `get_after_game_report`" in protocol
+    assert '"type": "get_after_game_report"' in protocol
+    assert '"type": "current_phase_rejected"' in protocol
+    assert '"type": "after_game_report_rejected"' in protocol
     assert '"deadline_at"' in protocol
     assert '"allowed_command"' in protocol
     assert '"latest_report"' in protocol

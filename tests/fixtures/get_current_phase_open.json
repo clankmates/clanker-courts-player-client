@@ -1,4 +1,5 @@
 {
+  "type": "current_phase",
   "schema_version": 1,
   "request_id": "current-1",
   "current_phase": {

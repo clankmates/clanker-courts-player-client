@@ -19,13 +19,15 @@ Before preparing orders, request the server-owned current phase/state surface:
 
 ```json
 {
-  "schema_version": 1,
-  "request_id": "current-1",
-  "command": "get_current_phase",
+  "type": "get_current_phase",
   "game_id": "demo",
-  "player_id": "Blue"
+  "request_id": "current-1"
 }
 ```
+
+The live Clankmates transport derives the public player identity from the saved
+server thread. Clients do not send `player_id`, `handle`, `turn`, `phase`, or
+`phase_id` in this request.
 
 The response contains `current_phase.phase_id`, turn, phase, status, absolute
 `deadline_at`, `allowed_command.accepting`, `allowed_command.request`,
@@ -34,6 +36,24 @@ expired, `current_phase.status` is `expired` and
 `allowed_command.accepting` is false without advancing the game. Ended games
 return `current_phase: null` and point `allowed_command.command` at
 `get_after_game_report`.
+
+### `get_after_game_report`
+
+Recover a missed final report after `current_phase` indicates the game has
+ended:
+
+```json
+{
+  "type": "get_after_game_report",
+  "game_id": "demo",
+  "request_id": "after-game-1"
+}
+```
+
+The response is an `after_game_report` with `schema_version` and `request_id`
+echoed for correlation. `current_phase_rejected` and
+`after_game_report_rejected` replies include `game_id`, optional `request_id`,
+and an `error` object with `code` and `details`.
 
 ### `join_game`
 
@@ -94,6 +114,9 @@ not a Clankmates handle.
 - `server_manifest`: published server/game/rules/lobby description. Current
   servers may include `rules_metadata` with canonical public rules, protocol,
   and manifest repo/path/hash fields.
+- `current_phase`: response to `get_current_phase`.
+- `current_phase_rejected`: rejection for current-phase recovery, for example
+  an unknown sender thread.
 - `join_ack` / `join_rejected`: response to `join_game`.
 - `ready_check`: asks joined players to confirm readiness.
 - `start_cancelled`: readiness failed because another joined player did not answer.
@@ -105,6 +128,8 @@ not a Clankmates handle.
 - `after_game_report`: post-game archive with final state, effective packages,
   battle events, phase timeline, and when available `final_standings` and
   `match_points`.
+- `after_game_report_rejected`: rejection for final-report recovery, for
+  example when the game has not ended.
 - `order_accepted` / `order_rejected`: response to an order package.
 - `message`: privately brokered negotiation from another active player.
 - `message_accepted` / `message_rejected`: response to a brokered negotiation

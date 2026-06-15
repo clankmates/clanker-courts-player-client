@@ -34,6 +34,7 @@ def test_module_help_lists_published_protocol_commands():
         "poll",
         "ready",
         "get-current-phase",
+        "get-after-game-report",
         "submit-orders",
         "send-message",
         "send-diplomacy",
@@ -119,8 +120,6 @@ def test_get_current_phase_dry_run_uses_only_current_phase_contract_fields():
         "thread-1",
         "--game-id",
         "demo",
-        "--player-id",
-        "Blue",
         "--request-id",
         "current-1",
         "--dry-run",
@@ -130,11 +129,33 @@ def test_get_current_phase_dry_run_uses_only_current_phase_contract_fields():
     payload = json.loads(result.stdout)
     assert payload["thread_id"] == "thread-1"
     assert payload["body"] == {
-        "schema_version": 1,
-        "request_id": "current-1",
-        "command": "get_current_phase",
+        "type": "get_current_phase",
         "game_id": "demo",
-        "player_id": "Blue",
+        "request_id": "current-1",
+    }
+
+
+def test_get_after_game_report_dry_run_uses_sender_derived_identity():
+    result = run_cli(
+        "get-after-game-report",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--game-id",
+        "demo",
+        "--request-id",
+        "after-game-1",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["thread_id"] == "thread-1"
+    assert payload["body"] == {
+        "type": "get_after_game_report",
+        "game_id": "demo",
+        "request_id": "after-game-1",
     }
 
 

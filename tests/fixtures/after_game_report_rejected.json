@@ -1,0 +1,12 @@
+{
+  "type": "after_game_report_rejected",
+  "game_id": "demo",
+  "request_id": "after-game-early",
+  "error": {
+    "code": "game_not_ended",
+    "details": {
+      "game_id": "demo"
+    }
+  },
+  "unknown_future_field": "preserved"
+}

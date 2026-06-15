@@ -5,8 +5,11 @@ import pytest
 from clanker_courts_player.errors import StructuredValidationError
 from clanker_courts_player.models import (
     AfterGameReport,
+    AfterGameReportRejected,
     BrokeredNegotiationMessage,
+    CurrentPhaseRejected,
     CurrentPhaseResponse,
+    GetAfterGameReport,
     GetCurrentPhase,
     JoinAck,
     JoinGame,
@@ -23,6 +26,7 @@ from clanker_courts_player.models import (
     SetupReport,
     StartCancelled,
     parse_current_phase_response,
+    parse_get_after_game_report_request,
     parse_get_current_phase_request,
     parse_message_body,
 )
@@ -42,9 +46,12 @@ FIXTURES = Path(__file__).parent / "fixtures"
         ("setup_report.json", SetupReport),
         ("movement_phase_report.json", MovementPhaseReport),
         ("after_game_report.json", AfterGameReport),
+        ("after_game_report_rejected.json", AfterGameReportRejected),
         ("order_package.json", OrderPackage),
         ("order_accepted.json", OrderAccepted),
         ("order_rejected.json", OrderRejected),
+        ("get_current_phase_open.json", CurrentPhaseResponse),
+        ("current_phase_rejected.json", CurrentPhaseRejected),
         ("brokered_negotiation_command.json", BrokeredNegotiationMessage),
         ("brokered_negotiation_message.json", BrokeredNegotiationMessage),
         ("message_accepted.json", MessageAccepted),
@@ -119,6 +126,8 @@ def test_current_phase_responses_parse_and_preserve_unknown_fields(fixture_name)
 
     parsed = parse_current_phase_response(raw)
     dumped = parsed.model_dump(mode="json")
+    if dumped.get("allowed_command", {}).get("accepting") is None:
+        dumped["allowed_command"].pop("accepting")
 
     assert isinstance(parsed, CurrentPhaseResponse)
     assert dumped == raw
@@ -163,27 +172,38 @@ def test_ended_current_phase_points_to_after_game_report():
 
     assert parsed.current_phase is None
     assert parsed.allowed_command.command == "get_after_game_report"
-    assert parsed.allowed_command.accepting is True
     assert parsed.latest_report.report_type == "after_game_report"
 
 
 def test_get_current_phase_request_uses_only_server_contract_fields():
     parsed = GetCurrentPhase.model_validate(
         {
-            "schema_version": 1,
-            "request_id": "current-1",
-            "command": "get_current_phase",
+            "type": "get_current_phase",
             "game_id": "demo",
-            "player_id": "Blue",
+            "request_id": "current-1",
         }
     )
 
     assert parsed.model_dump(mode="json") == {
-        "schema_version": 1,
-        "request_id": "current-1",
-        "command": "get_current_phase",
+        "type": "get_current_phase",
         "game_id": "demo",
-        "player_id": "Blue",
+        "request_id": "current-1",
+    }
+
+
+def test_get_after_game_report_request_uses_sender_derived_identity():
+    parsed = GetAfterGameReport.model_validate(
+        {
+            "type": "get_after_game_report",
+            "game_id": "demo",
+            "request_id": "after-game-1",
+        }
+    )
+
+    assert parsed.model_dump(mode="json") == {
+        "type": "get_after_game_report",
+        "game_id": "demo",
+        "request_id": "after-game-1",
     }
 
 
@@ -245,23 +265,31 @@ def test_get_current_phase_request_uses_only_server_contract_fields():
         ),
         (
             {
-                "schema_version": 1,
+                "type": "get_current_phase",
                 "request_id": "current-1",
-                "command": "get_current_phase",
                 "game_id": "demo",
                 "player_id": "Blue",
-                "phase_id": "demo:turn-01:movement",
             },
-            "phase_id",
+            "player_id",
+        ),
+        (
+            {
+                "type": "get_after_game_report",
+                "request_id": "after-game-1",
+                "game_id": "demo",
+                "command": "get_after_game_report",
+            },
+            "command",
         ),
     ],
 )
 def test_invalid_messages_fail_with_structured_errors(payload, expected_field):
-    parser = (
-        parse_get_current_phase_request
-        if payload.get("command") == "get_current_phase"
-        else parse_message_body
-    )
+    if payload.get("type") == "get_current_phase":
+        parser = parse_get_current_phase_request
+    elif payload.get("type") == "get_after_game_report":
+        parser = parse_get_after_game_report_request
+    else:
+        parser = parse_message_body
 
     with pytest.raises(StructuredValidationError) as exc_info:
         parser(payload)
