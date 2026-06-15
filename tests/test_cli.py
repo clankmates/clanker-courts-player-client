@@ -135,6 +135,26 @@ def test_get_current_phase_dry_run_uses_only_current_phase_contract_fields():
     }
 
 
+def test_get_current_phase_dry_run_allows_server_generated_request_id():
+    result = run_cli(
+        "get-current-phase",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--game-id",
+        "demo",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["body"] == {
+        "type": "get_current_phase",
+        "game_id": "demo",
+    }
+
+
 def test_get_after_game_report_dry_run_uses_sender_derived_identity():
     result = run_cli(
         "get-after-game-report",
@@ -156,6 +176,26 @@ def test_get_after_game_report_dry_run_uses_sender_derived_identity():
         "type": "get_after_game_report",
         "game_id": "demo",
         "request_id": "after-game-1",
+    }
+
+
+def test_get_after_game_report_dry_run_allows_server_generated_request_id():
+    result = run_cli(
+        "get-after-game-report",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--game-id",
+        "demo",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["body"] == {
+        "type": "get_after_game_report",
+        "game_id": "demo",
     }
 
 

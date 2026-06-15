@@ -114,6 +114,8 @@ class GetAfterGameReport(ClientCommandModel):
                 "command",
                 "schema_version",
                 "player_id",
+                "thread_id",
+                "phase_id",
                 "turn",
                 "phase",
                 "handle",

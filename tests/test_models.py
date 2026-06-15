@@ -281,6 +281,15 @@ def test_get_after_game_report_request_uses_sender_derived_identity():
             },
             "command",
         ),
+        (
+            {
+                "type": "get_after_game_report",
+                "request_id": "after-game-1",
+                "game_id": "demo",
+                "phase_id": "demo:turn-24:movement",
+            },
+            "phase_id",
+        ),
     ],
 )
 def test_invalid_messages_fail_with_structured_errors(payload, expected_field):

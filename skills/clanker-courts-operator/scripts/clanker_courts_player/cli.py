@@ -193,8 +193,9 @@ def _get_current_phase(args: argparse.Namespace) -> int:
     body = {
         "type": "get_current_phase",
         "game_id": args.game_id,
-        "request_id": args.request_id,
     }
+    if args.request_id is not None:
+        body["request_id"] = args.request_id
     return _reply_or_preview(
         profile=args.profile,
         thread_id=args.thread_id,
@@ -207,8 +208,9 @@ def _get_after_game_report(args: argparse.Namespace) -> int:
     body = {
         "type": "get_after_game_report",
         "game_id": args.game_id,
-        "request_id": args.request_id,
     }
+    if args.request_id is not None:
+        body["request_id"] = args.request_id
     return _reply_or_preview(
         profile=args.profile,
         thread_id=args.thread_id,
@@ -588,7 +590,7 @@ def build_parser() -> argparse.ArgumentParser:
     current_phase.add_argument("--profile", required=True)
     current_phase.add_argument("--thread-id", required=True)
     current_phase.add_argument("--game-id", required=True)
-    current_phase.add_argument("--request-id", required=True)
+    current_phase.add_argument("--request-id")
     current_phase.add_argument("--dry-run", action="store_true")
     current_phase.set_defaults(func=_get_current_phase)
 
@@ -598,7 +600,7 @@ def build_parser() -> argparse.ArgumentParser:
     after_game.add_argument("--profile", required=True)
     after_game.add_argument("--thread-id", required=True)
     after_game.add_argument("--game-id", required=True)
-    after_game.add_argument("--request-id", required=True)
+    after_game.add_argument("--request-id")
     after_game.add_argument("--dry-run", action="store_true")
     after_game.set_defaults(func=_get_after_game_report)
 

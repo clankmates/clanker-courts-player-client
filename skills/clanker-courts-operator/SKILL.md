@@ -131,12 +131,13 @@ Confirm readiness after a `ready_check`:
 Read the server-owned current phase/state before preparing orders:
 
 ```bash
-<skill-dir>/scripts/clanker-courts get-current-phase --profile <profile> --thread-id <server-thread-id> --game-id <game-id> --request-id <unique-request-id>
+<skill-dir>/scripts/clanker-courts get-current-phase --profile <profile> --thread-id <server-thread-id> --game-id <game-id>
 ```
 
 The live Clankmates transport derives the player identity from the saved server
 thread. Do not include `player_id`, `handle`, `turn`, `phase`, or `phase_id` in
-`get_current_phase` request bodies.
+`get_current_phase` request bodies. `--request-id` is optional; use it when the
+harness needs to correlate a request and reply.
 
 Use only the server response's `current_phase.phase_id`, turn, phase, status,
 absolute `deadline_at`, `allowed_command`, `latest_report`, and
@@ -147,11 +148,12 @@ server publishes the next phase. If `current_phase` is null and
 final report and archive the final outcome:
 
 ```bash
-<skill-dir>/scripts/clanker-courts get-after-game-report --profile <profile> --thread-id <server-thread-id> --game-id <game-id> --request-id <unique-request-id>
+<skill-dir>/scripts/clanker-courts get-after-game-report --profile <profile> --thread-id <server-thread-id> --game-id <game-id>
 ```
 
 As with current-phase recovery, the server derives the player identity from the
 thread. Do not include `player_id` in `get_after_game_report` request bodies.
+`--request-id` is optional.
 If the server replies with `current_phase_rejected` or
 `after_game_report_rejected`, preserve the raw reply, surface
 `error.code`/`error.details`, and do not invent a fallback state.
