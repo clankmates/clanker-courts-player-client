@@ -40,6 +40,7 @@ reports, and `rules_metadata`; use the active game metadata for live play.
 
 Client command types:
 
+- `get_current_phase`
 - `join_game`
 - `ready_to_start`
 - `order_package`
@@ -63,6 +64,11 @@ Server message and report types:
 - `message_rejected`
 
 Each report that opens a phase contains an opaque `phase_id`. A client must echo the latest `phase_id` in its `order_package`. Clients do not send a Clankmates address, turn, or phase; the server derives the player from the Clankmates sender address and the phase from `phase_id`.
+
+Before preparing orders, current clients should ask the server-owned read surface
+for `get_current_phase`. Use the response's current `phase_id`, visible state,
+absolute deadline, and allowed command shape instead of replaying a long thread
+tail to infer whether a cached phase is still current.
 
 A valid `order_package` marks that player ready to end the current phase. If the phase remains open, a later valid package from the same player replaces the previous package. There is no separate done message. A player that wants to submit no reinforcement or movement orders sends an empty `orders` list.
 
@@ -96,6 +102,94 @@ If all joined players answer in time, the server starts the game and sends `setu
 If the readiness clock expires, the game does not start. Players who already answered `ready_to_start` receive `start_cancelled`, and the remaining lobby waits for replacement players.
 
 ## Client-to-Server Messages
+
+### `get_current_phase`
+
+Read the server-owned current phase/state surface for one player before
+preparing or submitting orders. The request contains only the command envelope,
+game id, and public player id; it does not include a cached phase, turn, thread
+cursor, Clankmates handle, or proposed orders.
+
+```json
+{
+  "schema_version": 1,
+  "request_id": "current-1",
+  "command": "get_current_phase",
+  "game_id": "demo",
+  "player_id": "Blue"
+}
+```
+
+Open phase response:
+
+```json
+{
+  "schema_version": 1,
+  "request_id": "current-1",
+  "current_phase": {
+    "phase_id": "demo:turn-02:movement",
+    "turn": 2,
+    "phase": "movement",
+    "status": "open",
+    "deadline_at": "2026-06-14T18:30:00Z"
+  },
+  "allowed_command": {
+    "command": "order_package",
+    "accepting": true,
+    "request": {
+      "type": "order_package",
+      "game_id": "demo",
+      "phase_id": "demo:turn-02:movement",
+      "orders": []
+    }
+  },
+  "latest_report": {
+    "id": "msg-current-report-2",
+    "phase_id": "demo:turn-02:movement",
+    "report_type": "movement_phase_report",
+    "report_hash": "sha256:open-phase-report"
+  },
+  "visible_state": {
+    "locations": [],
+    "connectivity_graph": {}
+  }
+}
+```
+
+If an open phase's deadline has passed, the server reports that same phase with
+`current_phase.status` set to `expired` and
+`allowed_command.accepting` set to `false`. This read does not advance the game;
+clients should wait for the next report or freshen/watch messages rather than
+submitting more orders for the expired phase.
+
+When the game has ended, `current_phase` is `null` and `allowed_command` points
+at `get_after_game_report` so the client can fetch/archive the final report:
+
+```json
+{
+  "schema_version": 1,
+  "request_id": "current-ended-1",
+  "current_phase": null,
+  "allowed_command": {
+    "command": "get_after_game_report",
+    "accepting": true,
+    "request": {
+      "schema_version": 1,
+      "request_id": "after-game-1",
+      "command": "get_after_game_report",
+      "game_id": "demo",
+      "player_id": "Blue"
+    }
+  },
+  "latest_report": {
+    "id": "msg-after-game",
+    "phase_id": null,
+    "report_type": "after_game_report",
+    "report_hash": "sha256:after-game-report"
+  },
+  "visible_state": null
+}
+```
 
 ### `join_game`
 
@@ -685,6 +779,11 @@ Sent after the server rejects an invalid package. The player is not ready for th
   "ready": false
 }
 ```
+
+For `stale_phase` errors, treat `errors[].details` as recovery instructions.
+If `details.expected` or `details.current_phase` is present, stop replaying the
+stale thread context, call `get_current_phase`, and rebuild orders against the
+fresh server-owned phase/state before resubmitting.
 
 ### `message`
 

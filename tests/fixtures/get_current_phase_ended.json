@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "request_id": "current-ended-1",
+  "current_phase": null,
+  "allowed_command": {
+    "command": "get_after_game_report",
+    "accepting": true,
+    "request": {
+      "schema_version": 1,
+      "request_id": "after-game-1",
+      "command": "get_after_game_report",
+      "game_id": "demo",
+      "player_id": "Blue"
+    }
+  },
+  "latest_report": {
+    "id": "msg-after-game",
+    "phase_id": null,
+    "report_type": "after_game_report",
+    "report_hash": "sha256:after-game-report"
+  },
+  "visible_state": null,
+  "unknown_future_field": "preserved"
+}

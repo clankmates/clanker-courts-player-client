@@ -1,0 +1,22 @@
+{
+  "type": "order_rejected",
+  "game_id": "demo",
+  "phase_id": "demo:turn-01:movement",
+  "errors": [
+    {
+      "code": "stale_phase",
+      "details": {
+        "expected": "demo:turn-02:reinforcement",
+        "current_phase": {
+          "phase_id": "demo:turn-02:reinforcement",
+          "turn": 2,
+          "phase": "reinforcement",
+          "status": "open",
+          "deadline_at": "2026-06-14T18:45:00Z"
+        }
+      }
+    }
+  ],
+  "ready": false,
+  "unknown_future_field": "preserved"
+}

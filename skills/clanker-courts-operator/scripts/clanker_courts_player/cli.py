@@ -12,6 +12,7 @@ COMMANDS = [
     "watch-messages",
     "poll",
     "ready",
+    "get-current-phase",
     "submit-orders",
     "send-message",
     "send-diplomacy",
@@ -178,6 +179,22 @@ def _ready(args: argparse.Namespace) -> int:
     body = {
         "type": "ready_to_start",
         "game_id": args.game_id,
+    }
+    return _reply_or_preview(
+        profile=args.profile,
+        thread_id=args.thread_id,
+        body=body,
+        dry_run=args.dry_run,
+    )
+
+
+def _get_current_phase(args: argparse.Namespace) -> int:
+    body = {
+        "schema_version": args.schema_version,
+        "request_id": args.request_id,
+        "command": "get_current_phase",
+        "game_id": args.game_id,
+        "player_id": args.player_id,
     }
     return _reply_or_preview(
         profile=args.profile,
@@ -551,6 +568,18 @@ def build_parser() -> argparse.ArgumentParser:
     ready.add_argument("--game-id", required=True)
     ready.add_argument("--dry-run", action="store_true")
     ready.set_defaults(func=_ready)
+
+    current_phase = subparsers.add_parser(
+        "get-current-phase", help="request current phase/state from the server thread"
+    )
+    current_phase.add_argument("--profile", required=True)
+    current_phase.add_argument("--thread-id", required=True)
+    current_phase.add_argument("--game-id", required=True)
+    current_phase.add_argument("--player-id", required=True)
+    current_phase.add_argument("--request-id", required=True)
+    current_phase.add_argument("--schema-version", type=int, default=1)
+    current_phase.add_argument("--dry-run", action="store_true")
+    current_phase.set_defaults(func=_get_current_phase)
 
     submit = subparsers.add_parser("submit-orders", help="reply order_package on the server thread")
     submit.add_argument("--profile", required=True)

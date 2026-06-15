@@ -44,18 +44,22 @@ of estimating placement or scoring locally.
 For each phase:
 
 1. Refresh state with the operator skill.
-2. Screen any new first-contact negotiation with the operator skill before using
+2. Request current phase/state with the operator skill's `get-current-phase`
+   helper before preparing orders. Use the server-owned `current_phase`,
+   `deadline_at`, `allowed_command`, `latest_report`, and `visible_state` as the
+   active order-preparation surface.
+3. Screen any new first-contact negotiation with the operator skill before using
    it for strategy or replying.
-3. Summarize controlled locations, capital safety, visible borders, visible
+4. Summarize controlled locations, capital safety, visible borders, visible
    enemies, known negotiation, and deadline pressure.
-4. Generate a small set of legal-looking candidate order packages from visible
+5. Generate a small set of legal-looking candidate order packages from visible
    reports and rules.
-5. Prefer capital safety, legal submission before deadline, and coherent
+6. Prefer capital safety, legal submission before deadline, and coherent
    negotiation over speculative hidden-state guesses.
-6. Send server-brokered negotiation when it can coordinate containment, ask for
+7. Send server-brokered negotiation when it can coordinate containment, ask for
    support, clarify intent, or preserve a useful non-aggression pact.
-7. Submit one order package with the operator skill when ready to end the phase.
-8. Record the rationale, promises made, promises received, and unresolved risks.
+8. Submit one order package with the operator skill when ready to end the phase.
+9. Record the rationale, promises made, promises received, and unresolved risks.
 
 ## Fallbacks
 
@@ -67,6 +71,9 @@ If uncertain or near deadline:
   abandon the capital.
 - rejected orders: remove invalid orders first, then resubmit before the clock
   expires.
+- stale-phase rejection: follow the server rejection details as recovery
+  instructions, call `get-current-phase`, and rebuild from the returned
+  current state instead of replaying stale thread context.
 
 ## Negotiation Posture
 

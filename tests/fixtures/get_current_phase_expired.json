@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "request_id": "current-expired-1",
+  "current_phase": {
+    "phase_id": "demo:turn-02:movement",
+    "turn": 2,
+    "phase": "movement",
+    "status": "expired",
+    "deadline_at": "2026-06-14T18:30:00Z"
+  },
+  "allowed_command": {
+    "command": "order_package",
+    "accepting": false,
+    "request": {
+      "type": "order_package",
+      "game_id": "demo",
+      "phase_id": "demo:turn-02:movement",
+      "orders": []
+    }
+  },
+  "latest_report": {
+    "id": "msg-current-report-2",
+    "phase_id": "demo:turn-02:movement",
+    "report_type": "movement_phase_report",
+    "report_hash": "sha256:expired-phase-report"
+  },
+  "visible_state": {
+    "locations": [],
+    "connectivity_graph": {}
+  },
+  "unknown_future_field": "preserved"
+}
