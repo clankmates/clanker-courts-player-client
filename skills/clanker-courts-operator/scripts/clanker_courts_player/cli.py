@@ -345,11 +345,13 @@ def _recover_thread(args: argparse.Namespace) -> int:
     except FileNotFoundError:
         state = {
             "schema_version": 1,
-            "profile": args.profile,
-            "server": args.server,
-            "game_id": args.game_id,
             "processed_message_ids": [],
         }
+    state["schema_version"] = state.get("schema_version", 1)
+    state["profile"] = args.profile
+    state["server"] = args.server
+    state["game_id"] = args.game_id
+    state.setdefault("processed_message_ids", [])
     state["server_thread_id"] = args.thread_id
     store.save(state)
     _print_json(

@@ -324,3 +324,32 @@ def test_recover_thread_writes_state_for_subsequent_commands(capsys, tmp_path):
     assert exit_code == 0
     assert payload["server_thread_id"] == "thread-recovered"
     assert state["server_thread_id"] == "thread-recovered"
+
+
+def test_recover_thread_repairs_partial_existing_state(capsys, tmp_path):
+    (tmp_path / "state.json").write_text(json.dumps({"schema_version": 1}))
+
+    exit_code = main(
+        [
+            "recover-thread",
+            "--artifact-dir",
+            str(tmp_path),
+            "--thread-id",
+            "thread-recovered",
+            "--profile",
+            "p",
+            "--server",
+            "@server",
+            "--game-id",
+            "demo",
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert exit_code == 0
+    assert payload["server_thread_id"] == "thread-recovered"
+    assert state["profile"] == "p"
+    assert state["server"] == "@server"
+    assert state["game_id"] == "demo"
+    assert state["processed_message_ids"] == []
