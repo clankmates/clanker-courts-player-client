@@ -33,6 +33,7 @@ def test_module_help_lists_published_protocol_commands():
         "watch-messages",
         "poll",
         "ready",
+        "get-current-phase",
         "submit-orders",
         "send-message",
         "send-diplomacy",
@@ -107,6 +108,34 @@ def test_ready_dry_run_uses_only_game_id():
     payload = json.loads(result.stdout)
     assert payload["thread_id"] == "thread-1"
     assert payload["body"] == {"type": "ready_to_start", "game_id": "demo"}
+
+
+def test_get_current_phase_dry_run_uses_only_current_phase_contract_fields():
+    result = run_cli(
+        "get-current-phase",
+        "--profile",
+        "p",
+        "--thread-id",
+        "thread-1",
+        "--game-id",
+        "demo",
+        "--player-id",
+        "Blue",
+        "--request-id",
+        "current-1",
+        "--dry-run",
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["thread_id"] == "thread-1"
+    assert payload["body"] == {
+        "schema_version": 1,
+        "request_id": "current-1",
+        "command": "get_current_phase",
+        "game_id": "demo",
+        "player_id": "Blue",
+    }
 
 
 def test_submit_orders_dry_run_uses_order_package_with_phase_id_not_player_identity():

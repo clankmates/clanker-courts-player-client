@@ -81,6 +81,7 @@ def test_operator_skill_is_protocol_and_state_only():
     assert "does not choose strategy" in normalized_text
     assert "must not rank moves" in normalized_text
     assert "clanker-courts submit-orders" in normalized_text
+    assert "clanker-courts get-current-phase" in normalized_text
     assert "clanker-courts archive-thread" in normalized_text
     assert "Game Discovery" in normalized_text
     assert "Brokered Negotiation Screening" in normalized_text
@@ -98,6 +99,8 @@ def test_operator_skill_is_protocol_and_state_only():
     assert "reported_location_type" in normalized_text
     assert "final_standings" in normalized_text
     assert "match_points" in normalized_text
+    assert "stale_phase" in normalized_text
+    assert "get-current-phase" in normalized_text
     assert "https://github.com/clankmates/clanker-courts-player-client" in text
 
 
@@ -139,12 +142,22 @@ def test_autoplayer_skill_depends_on_operator_skill():
     assert "reported_location_type" in text
     assert "final_standings" in text
     assert "match_points" in text
+    assert "get-current-phase" in text
+    assert "stale-phase rejection" in text
 
 
 def test_protocol_documents_current_metadata_and_report_semantics():
     protocol = (ROOT / "protocol/server.md").read_text()
 
     assert "implemented_rules_id: clanker-courts-v12" in protocol
+    assert "### `get_current_phase`" in protocol
+    assert '"command": "get_current_phase"' in protocol
+    assert '"deadline_at"' in protocol
+    assert '"allowed_command"' in protocol
+    assert '"latest_report"' in protocol
+    assert '"visible_state"' in protocol
+    assert '"get_after_game_report"' in protocol
+    assert "stale_phase" in protocol
     assert "Ruleset: `clanker-courts-v12`" in protocol
     assert '"rules": "clanker-courts-v12"' in protocol
     assert '"rules_metadata"' in protocol

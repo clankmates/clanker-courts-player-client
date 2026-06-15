@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .errors import StructuredValidationError
 
 Phase = Literal["reinforcement", "movement"]
+PhaseStatus = Literal["open", "expired"]
 
 
 class ProtocolModel(BaseModel):
@@ -72,6 +73,24 @@ class OrderPackage(ClientCommandModel):
             for field in legacy_fields:
                 if field in value:
                     raise ValueError(f"order_package must not include {field}")
+        return value
+
+
+class GetCurrentPhase(ClientCommandModel):
+    schema_version: int
+    request_id: str
+    command: Literal["get_current_phase"]
+    game_id: str
+    player_id: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_thread_replay_fields(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            forbidden_fields = ("type", "thread_id", "phase_id", "turn", "phase", "handle")
+            for field in forbidden_fields:
+                if field in value:
+                    raise ValueError(f"get_current_phase must not include {field}")
         return value
 
 
@@ -174,6 +193,40 @@ class OrderRejected(ProtocolModel):
     phase_id: str
     errors: list[dict[str, Any]]
     ready: bool
+
+
+class CurrentPhase(ProtocolModel):
+    phase_id: str
+    turn: int
+    phase: Phase
+    status: PhaseStatus
+    deadline_at: str
+
+
+class AllowedCommand(ProtocolModel):
+    command: str
+    accepting: bool
+    request: dict[str, Any]
+
+
+class LatestReport(ProtocolModel):
+    id: str
+    phase_id: str | None = None
+    report_type: str
+    report_hash: str
+
+
+class CurrentPhaseResponse(ProtocolModel):
+    schema_version: int
+    request_id: str
+    current_phase: CurrentPhase | None
+    allowed_command: AllowedCommand
+    latest_report: LatestReport
+    visible_state: dict[str, Any] | None = None
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        kwargs.setdefault("exclude_none", False)
+        return super().model_dump(*args, **kwargs)
 
 
 class BrokeredNegotiationMessage(ClientCommandModel):
@@ -292,6 +345,24 @@ def parse_message_body(payload: Any) -> ProtocolModel:
         raise StructuredValidationError(_structured_errors(exc)) from exc
 
 
+def parse_get_current_phase_request(payload: Any) -> GetCurrentPhase:
+    if not isinstance(payload, dict):
+        raise StructuredValidationError([{"field": "$", "message": "expected JSON object"}])
+    try:
+        return GetCurrentPhase.model_validate(payload)
+    except ValidationError as exc:
+        raise StructuredValidationError(_structured_errors(exc)) from exc
+
+
+def parse_current_phase_response(payload: Any) -> CurrentPhaseResponse:
+    if not isinstance(payload, dict):
+        raise StructuredValidationError([{"field": "$", "message": "expected JSON object"}])
+    try:
+        return CurrentPhaseResponse.model_validate(payload)
+    except ValidationError as exc:
+        raise StructuredValidationError(_structured_errors(exc)) from exc
+
+
 def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
     errors: list[dict[str, str]] = []
     for error in exc.errors():
@@ -309,6 +380,8 @@ def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
         if field == "$" and "join_game must not include handle" in error["msg"]:
             field = "handle"
         if field == "$" and "order_package must not include " in error["msg"]:
+            field = error["msg"].rsplit(" ", 1)[-1]
+        if field == "$" and "get_current_phase must not include " in error["msg"]:
             field = error["msg"].rsplit(" ", 1)[-1]
         errors.append({"field": field, "message": error["msg"]})
     return errors

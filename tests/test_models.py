@@ -6,6 +6,8 @@ from clanker_courts_player.errors import StructuredValidationError
 from clanker_courts_player.models import (
     AfterGameReport,
     BrokeredNegotiationMessage,
+    CurrentPhaseResponse,
+    GetCurrentPhase,
     JoinAck,
     JoinGame,
     MessageAccepted,
@@ -20,6 +22,8 @@ from clanker_courts_player.models import (
     ServerManifest,
     SetupReport,
     StartCancelled,
+    parse_current_phase_response,
+    parse_get_current_phase_request,
     parse_message_body,
 )
 
@@ -103,6 +107,87 @@ def test_after_game_report_preserves_outcome_fields_final_standings_and_match_po
 
 
 @pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "get_current_phase_open.json",
+        "get_current_phase_expired.json",
+        "get_current_phase_ended.json",
+    ],
+)
+def test_current_phase_responses_parse_and_preserve_unknown_fields(fixture_name):
+    raw = json.loads((FIXTURES / fixture_name).read_text())
+
+    parsed = parse_current_phase_response(raw)
+    dumped = parsed.model_dump(mode="json")
+
+    assert isinstance(parsed, CurrentPhaseResponse)
+    assert dumped == raw
+    assert dumped["unknown_future_field"] == "preserved"
+
+
+def test_open_current_phase_response_supplies_order_preparation_surface():
+    raw = json.loads((FIXTURES / "get_current_phase_open.json").read_text())
+
+    parsed = CurrentPhaseResponse.model_validate(raw)
+
+    assert parsed.current_phase is not None
+    assert parsed.current_phase.phase_id == "demo:turn-02:movement"
+    assert parsed.current_phase.status == "open"
+    assert parsed.allowed_command.accepting is True
+    assert parsed.allowed_command.request == {
+        "type": "order_package",
+        "game_id": "demo",
+        "phase_id": "demo:turn-02:movement",
+        "orders": [],
+    }
+    assert parsed.latest_report.report_hash == "sha256:open-phase-report"
+    assert parsed.visible_state is not None
+    assert parsed.visible_state["locations"][0]["reported_location_type"] == "capital"
+
+
+def test_expired_current_phase_does_not_advance_game_or_accept_orders():
+    raw = json.loads((FIXTURES / "get_current_phase_expired.json").read_text())
+
+    parsed = CurrentPhaseResponse.model_validate(raw)
+
+    assert parsed.current_phase is not None
+    assert parsed.current_phase.status == "expired"
+    assert parsed.current_phase.phase_id == "demo:turn-02:movement"
+    assert parsed.allowed_command.accepting is False
+
+
+def test_ended_current_phase_points_to_after_game_report():
+    raw = json.loads((FIXTURES / "get_current_phase_ended.json").read_text())
+
+    parsed = CurrentPhaseResponse.model_validate(raw)
+
+    assert parsed.current_phase is None
+    assert parsed.allowed_command.command == "get_after_game_report"
+    assert parsed.allowed_command.accepting is True
+    assert parsed.latest_report.report_type == "after_game_report"
+
+
+def test_get_current_phase_request_uses_only_server_contract_fields():
+    parsed = GetCurrentPhase.model_validate(
+        {
+            "schema_version": 1,
+            "request_id": "current-1",
+            "command": "get_current_phase",
+            "game_id": "demo",
+            "player_id": "Blue",
+        }
+    )
+
+    assert parsed.model_dump(mode="json") == {
+        "schema_version": 1,
+        "request_id": "current-1",
+        "command": "get_current_phase",
+        "game_id": "demo",
+        "player_id": "Blue",
+    }
+
+
+@pytest.mark.parametrize(
     ("payload", "expected_field"),
     [
         (
@@ -158,11 +243,28 @@ def test_after_game_report_preserves_outcome_fields_final_standings_and_match_po
             },
             "to_player_id",
         ),
+        (
+            {
+                "schema_version": 1,
+                "request_id": "current-1",
+                "command": "get_current_phase",
+                "game_id": "demo",
+                "player_id": "Blue",
+                "phase_id": "demo:turn-01:movement",
+            },
+            "phase_id",
+        ),
     ],
 )
 def test_invalid_messages_fail_with_structured_errors(payload, expected_field):
+    parser = (
+        parse_get_current_phase_request
+        if payload.get("command") == "get_current_phase"
+        else parse_message_body
+    )
+
     with pytest.raises(StructuredValidationError) as exc_info:
-        parse_message_body(payload)
+        parser(payload)
 
     error = exc_info.value.to_dict()
     assert error["ok"] is False

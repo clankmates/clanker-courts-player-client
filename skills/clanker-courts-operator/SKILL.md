@@ -115,6 +115,20 @@ Confirm readiness after a `ready_check`:
 <skill-dir>/scripts/clanker-courts ready --profile <profile> --thread-id <server-thread-id> --game-id <game-id>
 ```
 
+Read the server-owned current phase/state before preparing orders:
+
+```bash
+<skill-dir>/scripts/clanker-courts get-current-phase --profile <profile> --thread-id <server-thread-id> --game-id <game-id> --player-id <public-player-id> --request-id <unique-request-id>
+```
+
+Use only the server response's `current_phase.phase_id`, turn, phase, status,
+absolute `deadline_at`, `allowed_command`, `latest_report`, and
+`visible_state` when preparing the next order package. If `current_phase.status`
+is `expired`, do not submit more orders for that phase; freshen/watch until the
+server publishes the next phase. If `current_phase` is null and
+`allowed_command.command` is `get_after_game_report`, fetch or wait for the
+final report and archive the final outcome.
+
 Submit the latest order package for a phase:
 
 ```bash
@@ -212,6 +226,12 @@ Maintain a JSON state file with:
   retained.
 - `processed_message_ids` for duplicate suppression across `freshen` and
   `watch-messages` cycles.
+
+When an `order_rejected` payload contains `stale_phase`, treat
+`errors[].details.expected` or `errors[].details.current_phase` as recovery
+guidance. Stop using the stale phase/thread context, call `get-current-phase`,
+and rebuild orders from the returned server-owned state before resubmitting.
+Do not keep replaying the old thread tail as a substitute for current state.
 
 Ignore unrelated `game_id` messages. Preserve malformed or unknown messages in
 the raw archive before ignoring them. Track processed message IDs in local state

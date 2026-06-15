@@ -166,6 +166,36 @@ def screen_brokered_negotiation(
     return _screening_result(True, "accepted", sender=sender)
 
 
+def stale_rejection_recovery_hints(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract recovery guidance from a stale-phase rejection.
+
+    Server-side duplicate dampening means clients should not keep replaying old
+    thread context after a stale rejection. Treat the rejection as an instruction
+    to fetch current phase/state, then rebuild orders against that fresh phase.
+    """
+    body = payload.get("body") if isinstance(payload.get("body"), dict) else payload
+    if not isinstance(body, dict) or body.get("type") != "order_rejected":
+        return None
+
+    for error in body.get("errors", []):
+        if not isinstance(error, dict) or error.get("code") != "stale_phase":
+            continue
+        details = error.get("details") if isinstance(error.get("details"), dict) else {}
+        hint: dict[str, Any] = {
+            "reason": "stale_phase",
+            "action": "get_current_phase",
+            "replay_stale_thread": False,
+        }
+        expected = details.get("expected")
+        if isinstance(expected, str):
+            hint["expected_phase_id"] = expected
+        current_phase = details.get("current_phase")
+        if isinstance(current_phase, dict):
+            hint["current_phase"] = current_phase
+        return hint
+    return None
+
+
 def _screening_result(accepted: bool, reason: str, **extra: Any) -> dict[str, Any]:
     return {"accepted": accepted, "reason": reason, **extra}
 
