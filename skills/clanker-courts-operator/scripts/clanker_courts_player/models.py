@@ -77,20 +77,52 @@ class OrderPackage(ClientCommandModel):
 
 
 class GetCurrentPhase(ClientCommandModel):
-    schema_version: int
-    request_id: str
-    command: Literal["get_current_phase"]
+    type: Literal["get_current_phase"]
     game_id: str
-    player_id: str
+    request_id: str | None = None
 
     @model_validator(mode="before")
     @classmethod
-    def reject_thread_replay_fields(cls, value: Any) -> Any:
+    def reject_api_and_replay_fields(cls, value: Any) -> Any:
         if isinstance(value, dict):
-            forbidden_fields = ("type", "thread_id", "phase_id", "turn", "phase", "handle")
+            forbidden_fields = (
+                "command",
+                "schema_version",
+                "player_id",
+                "thread_id",
+                "phase_id",
+                "turn",
+                "phase",
+                "handle",
+            )
             for field in forbidden_fields:
                 if field in value:
                     raise ValueError(f"get_current_phase must not include {field}")
+        return value
+
+
+class GetAfterGameReport(ClientCommandModel):
+    type: Literal["get_after_game_report"]
+    game_id: str
+    request_id: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_api_identity_fields(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            forbidden_fields = (
+                "command",
+                "schema_version",
+                "player_id",
+                "thread_id",
+                "phase_id",
+                "turn",
+                "phase",
+                "handle",
+            )
+            for field in forbidden_fields:
+                if field in value:
+                    raise ValueError(f"get_after_game_report must not include {field}")
         return value
 
 
@@ -205,7 +237,7 @@ class CurrentPhase(ProtocolModel):
 
 class AllowedCommand(ProtocolModel):
     command: str
-    accepting: bool
+    accepting: bool | None = None
     request: dict[str, Any]
 
 
@@ -217,6 +249,7 @@ class LatestReport(ProtocolModel):
 
 
 class CurrentPhaseResponse(ProtocolModel):
+    type: Literal["current_phase"]
     schema_version: int
     request_id: str
     current_phase: CurrentPhase | None
@@ -227,6 +260,20 @@ class CurrentPhaseResponse(ProtocolModel):
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         kwargs.setdefault("exclude_none", False)
         return super().model_dump(*args, **kwargs)
+
+
+class CurrentPhaseRejected(ProtocolModel):
+    type: Literal["current_phase_rejected"]
+    game_id: str
+    request_id: str | None = None
+    error: dict[str, Any]
+
+
+class AfterGameReportRejected(ProtocolModel):
+    type: Literal["after_game_report_rejected"]
+    game_id: str
+    request_id: str | None = None
+    error: dict[str, Any]
 
 
 class BrokeredNegotiationMessage(ClientCommandModel):
@@ -293,6 +340,8 @@ MessageBody = Annotated[
     | JoinGame
     | ReadyToStart
     | OrderPackage
+    | GetCurrentPhase
+    | GetAfterGameReport
     | JoinAck
     | JoinRejected
     | ReadyCheck
@@ -303,9 +352,12 @@ MessageBody = Annotated[
     | AfterGameReport
     | OrderAccepted
     | OrderRejected
+    | CurrentPhaseResponse
+    | CurrentPhaseRejected
     | BrokeredNegotiationMessage
     | MessageAccepted
     | MessageRejected
+    | AfterGameReportRejected
     | PeerDiplomacyMessage,
     Field(discriminator="type"),
 ]
@@ -315,6 +367,8 @@ MESSAGE_MODELS = {
     "join_game": JoinGame,
     "ready_to_start": ReadyToStart,
     "order_package": OrderPackage,
+    "get_current_phase": GetCurrentPhase,
+    "get_after_game_report": GetAfterGameReport,
     "join_ack": JoinAck,
     "join_rejected": JoinRejected,
     "ready_check": ReadyCheck,
@@ -325,9 +379,12 @@ MESSAGE_MODELS = {
     "after_game_report": AfterGameReport,
     "order_accepted": OrderAccepted,
     "order_rejected": OrderRejected,
+    "current_phase": CurrentPhaseResponse,
+    "current_phase_rejected": CurrentPhaseRejected,
     "message": BrokeredNegotiationMessage,
     "message_accepted": MessageAccepted,
     "message_rejected": MessageRejected,
+    "after_game_report_rejected": AfterGameReportRejected,
     "diplomacy_message": PeerDiplomacyMessage,
 }
 
@@ -350,6 +407,15 @@ def parse_get_current_phase_request(payload: Any) -> GetCurrentPhase:
         raise StructuredValidationError([{"field": "$", "message": "expected JSON object"}])
     try:
         return GetCurrentPhase.model_validate(payload)
+    except ValidationError as exc:
+        raise StructuredValidationError(_structured_errors(exc)) from exc
+
+
+def parse_get_after_game_report_request(payload: Any) -> GetAfterGameReport:
+    if not isinstance(payload, dict):
+        raise StructuredValidationError([{"field": "$", "message": "expected JSON object"}])
+    try:
+        return GetAfterGameReport.model_validate(payload)
     except ValidationError as exc:
         raise StructuredValidationError(_structured_errors(exc)) from exc
 
@@ -382,6 +448,8 @@ def _structured_errors(exc: ValidationError) -> list[dict[str, str]]:
         if field == "$" and "order_package must not include " in error["msg"]:
             field = error["msg"].rsplit(" ", 1)[-1]
         if field == "$" and "get_current_phase must not include " in error["msg"]:
+            field = error["msg"].rsplit(" ", 1)[-1]
+        if field == "$" and "get_after_game_report must not include " in error["msg"]:
             field = error["msg"].rsplit(" ", 1)[-1]
         errors.append({"field": field, "message": error["msg"]})
     return errors

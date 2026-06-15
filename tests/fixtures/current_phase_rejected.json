@@ -1,0 +1,12 @@
+{
+  "type": "current_phase_rejected",
+  "game_id": "demo",
+  "request_id": "current-missing",
+  "error": {
+    "code": "unknown_player",
+    "details": {
+      "thread_id": "thread-missing"
+    }
+  },
+  "unknown_future_field": "preserved"
+}

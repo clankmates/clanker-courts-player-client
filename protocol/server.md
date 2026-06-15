@@ -41,6 +41,7 @@ reports, and `rules_metadata`; use the active game metadata for live play.
 Client command types:
 
 - `get_current_phase`
+- `get_after_game_report`
 - `join_game`
 - `ready_to_start`
 - `order_package`
@@ -49,6 +50,8 @@ Client command types:
 Server message and report types:
 
 - `server_manifest`
+- `current_phase`
+- `current_phase_rejected`
 - `join_ack`
 - `join_rejected`
 - `ready_check`
@@ -57,6 +60,7 @@ Server message and report types:
 - `movement_phase_report`
 - `movement_result_report`
 - `after_game_report`
+- `after_game_report_rejected`
 - `order_accepted`
 - `order_rejected`
 - `message`
@@ -106,17 +110,17 @@ If the readiness clock expires, the game does not start. Players who already ans
 ### `get_current_phase`
 
 Read the server-owned current phase/state surface for one player before
-preparing or submitting orders. The request contains only the command envelope,
-game id, and public player id; it does not include a cached phase, turn, thread
-cursor, Clankmates handle, or proposed orders.
+preparing or submitting orders. The live Clankmates transport derives the player
+identity from the saved server thread, so the request contains only the typed
+message envelope, game id, and optional request id. It does not include
+`player_id`, a cached phase, turn, thread cursor, Clankmates handle, or proposed
+orders.
 
 ```json
 {
-  "schema_version": 1,
-  "request_id": "current-1",
-  "command": "get_current_phase",
+  "type": "get_current_phase",
   "game_id": "demo",
-  "player_id": "Blue"
+  "request_id": "current-1"
 }
 ```
 
@@ -124,6 +128,7 @@ Open phase response:
 
 ```json
 {
+  "type": "current_phase",
   "schema_version": 1,
   "request_id": "current-1",
   "current_phase": {
@@ -167,18 +172,15 @@ at `get_after_game_report` so the client can fetch/archive the final report:
 
 ```json
 {
+  "type": "current_phase",
   "schema_version": 1,
   "request_id": "current-ended-1",
   "current_phase": null,
   "allowed_command": {
     "command": "get_after_game_report",
-    "accepting": true,
     "request": {
-      "schema_version": 1,
-      "request_id": "after-game-1",
-      "command": "get_after_game_report",
-      "game_id": "demo",
-      "player_id": "Blue"
+      "type": "get_after_game_report",
+      "game_id": "demo"
     }
   },
   "latest_report": {
@@ -188,6 +190,75 @@ at `get_after_game_report` so the client can fetch/archive the final report:
     "report_hash": "sha256:after-game-report"
   },
   "visible_state": null
+}
+```
+
+If the sender thread does not map to a joined player in the game, the server
+rejects the request:
+
+```json
+{
+  "type": "current_phase_rejected",
+  "game_id": "demo",
+  "request_id": "current-missing",
+  "error": {
+    "code": "unknown_player",
+    "details": {
+      "thread_id": "thread-missing"
+    }
+  }
+}
+```
+
+### `get_after_game_report`
+
+Recover a missed final report after game end. Send this by replying on the saved
+server thread. The server derives the player identity from that thread.
+
+```json
+{
+  "type": "get_after_game_report",
+  "game_id": "demo",
+  "request_id": "after-game-1"
+}
+```
+
+Successful responses use the normal `after_game_report` body with
+`schema_version` and `request_id` echoed for correlation:
+
+```json
+{
+  "type": "after_game_report",
+  "schema_version": 1,
+  "request_id": "after-game-1",
+  "game_id": "demo",
+  "player_id": "Blue",
+  "winners": ["Blue"],
+  "outcome_reason": "last_player_standing",
+  "score_rationale": "Blue is the last surviving player.",
+  "final_state": {},
+  "final_standings": [],
+  "match_points": [],
+  "effective_packages": [],
+  "battle_events": [],
+  "phase_timeline": []
+}
+```
+
+If the game has not ended, or the sender thread is not a joined player, the
+server rejects the recovery request:
+
+```json
+{
+  "type": "after_game_report_rejected",
+  "game_id": "demo",
+  "request_id": "after-game-early",
+  "error": {
+    "code": "game_not_ended",
+    "details": {
+      "game_id": "demo"
+    }
+  }
 }
 ```
 
