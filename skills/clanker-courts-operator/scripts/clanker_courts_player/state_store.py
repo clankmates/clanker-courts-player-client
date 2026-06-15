@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ class StateStore:
         self.state_path = Path(state_path)
         self.base_dir = self.state_path.parent
         self.raw_messages_path = self.base_dir / "raw_messages.jsonl"
+        self.submitted_commands_path = self.base_dir / "submitted_commands.jsonl"
 
     def load(self) -> dict[str, Any]:
         with self.state_path.open(encoding="utf-8") as handle:
@@ -28,6 +30,35 @@ class StateStore:
             json.dump(state, handle, sort_keys=True)
             handle.write("\n")
         os.replace(tmp_path, self.state_path)
+
+    def initialize_session(
+        self,
+        *,
+        profile: str,
+        server: str,
+        game_id: str,
+        server_thread_id: str,
+        join_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        state = {
+            "schema_version": 1,
+            "profile": profile,
+            "server": server,
+            "game_id": game_id,
+            "server_thread_id": server_thread_id,
+            "status": "joined",
+            "join_result": join_result,
+            "processed_message_ids": [],
+        }
+        self.save(state)
+        return state
+
+    def append_submitted_command(self, command: dict[str, Any]) -> None:
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        record = {"local_timestamp": _utc_now(), **command}
+        with self.submitted_commands_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, sort_keys=True))
+            handle.write("\n")
 
     def append_raw_message(self, message: dict[str, Any]) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -172,3 +203,7 @@ def _apply_final_outcome(state: dict[str, Any], payload: dict[str, Any]) -> None
     ):
         if field in payload:
             state[field] = payload[field]
+
+
+def _utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")

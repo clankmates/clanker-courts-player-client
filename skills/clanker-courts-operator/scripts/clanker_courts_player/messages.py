@@ -8,6 +8,8 @@ TIMESTAMP_FIELDS = ("created_at", "createdAt", "inserted_at", "insertedAt", "tim
 
 
 def decode_clankmates_message(message: dict[str, Any]) -> dict[str, Any]:
+    if "message" in message and isinstance(message["message"], dict):
+        message = message["message"]
     attributes = message.get("attributes")
     raw_body = attributes.get("body") if isinstance(attributes, dict) else None
     if raw_body is None:

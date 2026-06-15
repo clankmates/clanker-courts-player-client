@@ -44,8 +44,7 @@ of estimating placement or scoring locally.
 For each phase:
 
 1. Refresh state with the operator skill.
-2. Request current phase/state with the operator skill's `get-current-phase`
-   helper before preparing orders. Use the server-owned `current_phase`,
+2. Request current phase/state with the operator skill's `current` helper before preparing orders. Use the server-owned `current_phase`,
    `deadline_at`, `allowed_command`, `latest_report`, and `visible_state` as the
    active order-preparation surface.
 3. Screen any new first-contact negotiation with the operator skill before using
@@ -72,7 +71,7 @@ If uncertain or near deadline:
 - rejected orders: remove invalid orders first, then resubmit before the clock
   expires.
 - stale-phase rejection: follow the server rejection details as recovery
-  instructions, call `get-current-phase`, and rebuild from the returned
+  instructions, call `current`, and rebuild from the returned
   current state instead of replaying stale thread context.
 
 ## Negotiation Posture
