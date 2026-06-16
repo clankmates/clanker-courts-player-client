@@ -19,6 +19,29 @@ The operator skill is self-contained for agent installation: copy
 the target agent's skills directory. The operator helper CLI lives under the
 operator skill's `scripts/` directory.
 
+## Runtime
+
+From the full repository, prefer `uv` so harnesses use a consistent Python and
+dependency set:
+
+```bash
+uv run clanker-courts --help
+uv run clanker-courts-autoplayer --help
+```
+
+For copied skill-only installs, use the bundled wrappers:
+
+```bash
+skills/clanker-courts-operator/scripts/clanker-courts --help
+skills/clanker-courts-autoplayer/scripts/clanker-courts-autoplayer --help
+```
+
+The operator wrapper requires `clankm`, Python 3.11+, and `pydantic>=2,<3`. It
+tries a compatible local Python first and falls back to `uv` when available. The
+autoplayer helper is strategy-neutral and uses only the standard library. The
+Clankmates profile is not created by these skills; the user or outer harness
+must provide an installed, authenticated profile.
+
 When installing only the skills without the full repo, use the canonical public
 repository for full rules and protocol details:
 

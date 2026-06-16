@@ -6,7 +6,6 @@ __pycache__/
 .mypy_cache/
 .venv/
 *.egg-info/
-uv.lock
 
 # Local runtime state
 .runs/

@@ -15,9 +15,13 @@ dev = ["pytest>=8", "pytest-cov>=7", "ruff>=0.11"]
 
 [project.scripts]
 clanker-courts = "clanker_courts_player.cli:main"
+clanker-courts-autoplayer = "clanker_courts_autoplayer.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["skills/clanker-courts-operator/scripts"]
+where = [
+  "skills/clanker-courts-operator/scripts",
+  "skills/clanker-courts-autoplayer/scripts",
+]
 
 [tool.ruff]
 line-length = 100
@@ -27,4 +31,7 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
-pythonpath = ["skills/clanker-courts-operator/scripts"]
+pythonpath = [
+  "skills/clanker-courts-operator/scripts",
+  "skills/clanker-courts-autoplayer/scripts",
+]
