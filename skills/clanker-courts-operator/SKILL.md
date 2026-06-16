@@ -6,6 +6,8 @@ message archiving, and protocol command submission. It does not choose strategy.
 
 ## Inputs
 
+- Installed `clankm` CLI. The target harness should not implement Clankmates
+  transport itself.
 - Local Clankmates profile, for example `ccf4_bluebot`.
 - Server inbox address, for example `@gamemaster/clanker_courts`.
 - Game ID. If it is not supplied, discover open games from the server channel
@@ -28,10 +30,11 @@ The helper owns these files:
 <artifact-dir>/submitted_commands.jsonl
 ```
 
-The local Clankmates profile is mandatory. It selects the base URL, local
-credentials, owner handle, and inbox access. If the requested profile is missing
-or unauthenticated, stop and report that profile setup is required; do not create
-accounts, request master keys, or invent credentials from this skill.
+The local Clankmates profile is mandatory and should be supplied by the user or
+outer harness. It selects the base URL, local credentials, owner handle, and
+inbox access. If the requested profile is missing or unauthenticated, stop and
+report that profile setup is required; do not create accounts, request master
+keys, or invent credentials from this skill.
 
 The profile handle is local transport identity only. For game state and
 negotiation, use the public player identity published by the server, such as
@@ -39,15 +42,24 @@ negotiation, use the public player identity published by the server, such as
 
 ## Helper Runtime
 
-Run the bundled helper from this skill folder. If your skill engine exposes the
-skill path, use that path as `<skill-dir>`:
+When running from the full repository, prefer `uv` so the correct Python and
+runtime dependencies are resolved consistently:
+
+```bash
+uv run clanker-courts --help
+```
+
+When the skill has been copied into an agent skills directory without the full
+repository, run the bundled helper from this skill folder. If your skill engine
+exposes the skill path, use that path as `<skill-dir>`:
 
 ```bash
 <skill-dir>/scripts/clanker-courts --help
 ```
 
-The helper requires Python 3.11+ and `pydantic`. If `pydantic` is missing,
-install the skill-local requirements in the active environment:
+The wrapper first tries `PYTHON` when set, then `python3` when it is Python 3.11+
+with `pydantic`, then `uv` with `pydantic>=2,<3`. If none of those work, install
+the skill-local requirements in a compatible Python environment:
 
 ```bash
 python3 -m pip install -r <skill-dir>/scripts/requirements.txt
@@ -103,15 +115,17 @@ from `clankm inbox send --json`, and immediately saves it as
   --artifact-dir <artifact-dir>
 ```
 
-After join, run one watch loop on that saved thread. Do not list inbox threads,
-poll threads, rediscover conversations, or build a custom harness poller during
-normal play:
+After join, watch only that saved thread. Do not list inbox threads, poll
+threads, rediscover conversations, or build a custom thread-discovery poller
+during normal play:
 
 ```bash
 <skill-dir>/scripts/clanker-courts watch --artifact-dir <artifact-dir>
 ```
 
-Use `--once` only for bounded tests or smoke checks:
+Use `--once` for bounded tests, smoke checks, or a strategy-neutral outer
+dispatcher that repeatedly refreshes the saved thread while preserving the same
+artifact directory:
 
 ```bash
 <skill-dir>/scripts/clanker-courts watch --artifact-dir <artifact-dir> --once

@@ -74,11 +74,21 @@ def test_operator_skill_is_self_contained():
     assert (skill_dir / "references/message-types.md").exists()
 
 
+def test_autoplayer_skill_has_strategy_neutral_helper():
+    skill_dir = ROOT / "skills/clanker-courts-autoplayer"
+
+    assert (skill_dir / "scripts/clanker-courts-autoplayer").exists()
+    assert (skill_dir / "scripts/clanker_courts_autoplayer/cli.py").exists()
+    assert (skill_dir / "scripts/clanker_courts_autoplayer/context.py").exists()
+
+
 def test_operator_skill_is_protocol_and_state_only():
     text = (ROOT / "skills/clanker-courts-operator/SKILL.md").read_text()
     normalized_text = " ".join(text.split())
 
     assert "does not choose strategy" in normalized_text
+    assert "Installed `clankm` CLI" in text
+    assert "uv run clanker-courts --help" in text
     assert "must not rank moves" in normalized_text
     assert "clanker-courts orders" in normalized_text
     assert "clanker-courts current" in normalized_text
@@ -128,11 +138,37 @@ def test_skill_local_wrapper_runs_without_global_install():
     assert "archive-thread" not in result.stdout
 
 
+def test_autoplayer_local_wrapper_runs_without_global_install():
+    skill_dir = ROOT / "skills/clanker-courts-autoplayer"
+    env = {
+        **os.environ,
+        "PYTHON": sys.executable,
+        "PYTHONPATH": str(skill_dir / "scripts"),
+    }
+
+    result = subprocess.run(
+        [str(skill_dir / "scripts/clanker-courts-autoplayer"), "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert "context" in result.stdout
+    assert "fallback-orders" in result.stdout
+
+
 def test_autoplayer_skill_depends_on_operator_skill():
     text = (ROOT / "skills/clanker-courts-autoplayer/SKILL.md").read_text()
 
     assert "Clanker Courts Operator" in text
     assert "sibling `clanker-courts-operator` skill" in text
+    assert "not a black-box daemon" in text
+    assert "uv run clanker-courts-autoplayer --help" in text
+    assert "decision_journal.jsonl" in text
+    assert "diplomacy_ledger.jsonl" in text
+    assert "survivor score-share" in text
     assert "Rules And Visibility" in text
     assert "published setup post" in text
     assert "visible information only" in text

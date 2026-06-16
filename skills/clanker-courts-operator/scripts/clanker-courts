@@ -1,3 +1,38 @@
 #!/usr/bin/env sh
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}" exec "${PYTHON:-python3}" -m clanker_courts_player "$@"
+
+run_with_python() {
+  INTERPRETER="$1"
+  shift
+  PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}" exec "$INTERPRETER" -m clanker_courts_player "$@"
+}
+
+if [ -n "${PYTHON:-}" ]; then
+  run_with_python "$PYTHON" "$@"
+fi
+
+if command -v python3 >/dev/null 2>&1 && python3 - <<'PY' >/dev/null 2>&1
+import sys
+if sys.version_info < (3, 11):
+    raise SystemExit(1)
+import pydantic
+PY
+then
+  run_with_python python3 "$@"
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}" \
+    exec uv run --quiet --with "pydantic>=2,<3" --python ">=3.11" \
+      python -m clanker_courts_player "$@"
+fi
+
+cat >&2 <<'EOF'
+clanker-courts requires Python 3.11+ and pydantic>=2,<3.
+
+Fix one of these before rerunning:
+- use the full repo command: uv run clanker-courts ...
+- install skill requirements: python3 -m pip install -r <skill-dir>/scripts/requirements.txt
+- set PYTHON to a compatible interpreter with pydantic installed
+EOF
+exit 1
