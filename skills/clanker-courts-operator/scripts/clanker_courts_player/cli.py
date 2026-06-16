@@ -55,16 +55,22 @@ def _load_state_with_thread(store) -> tuple[dict[str, Any] | None, dict[str, Any
 
 
 def _thread_id_from_send_result(result: dict[str, Any]) -> str | None:
-    for key in ("thread_id", "threadId"):
+    for key in ("id", "thread_id", "threadId"):
         value = result.get(key)
         if isinstance(value, str) and value.strip():
             return value
     data = result.get("data")
     if isinstance(data, dict):
-        for key in ("thread_id", "threadId"):
+        for key in ("id", "thread_id", "threadId"):
             value = data.get(key)
             if isinstance(value, str) and value.strip():
                 return value
+    # Also check attributes.id for some thread shapes
+    attrs = result.get("attributes")
+    if isinstance(attrs, dict):
+        value = attrs.get("id") or attrs.get("thread_id")
+        if isinstance(value, str) and value.strip():
+            return value
     return None
 
 
