@@ -70,7 +70,23 @@ def test_phase_context_summarizes_visible_state_and_negotiation(tmp_path):
         },
         "ok": True,
     }
-    (tmp_path / "submitted_commands.jsonl").write_text(json.dumps(submitted_message) + "\n")
+    failed_submitted_message = {
+        **submitted_message,
+        "local_timestamp": "2026-06-14T18:12:00Z",
+        "body": {
+            "type": "message",
+            "game_id": "demo",
+            "destination": "Orange",
+            "body": "This failed to send.",
+        },
+        "ok": False,
+    }
+    (tmp_path / "submitted_commands.jsonl").write_text(
+        json.dumps(submitted_message)
+        + "\n"
+        + json.dumps(failed_submitted_message)
+        + "\n"
+    )
 
     context = build_phase_context(
         tmp_path,
@@ -85,6 +101,7 @@ def test_phase_context_summarizes_visible_state_and_negotiation(tmp_path):
     assert digest["visible_score_estimate"] == 3
     assert digest["visible_capital_threats"][0]["location_id"] == "M"
     assert context["recent_negotiation"]["accepted"][0]["from"] == "Orange"
+    assert len(context["recent_negotiation"]["sent"]) == 1
     assert context["recent_negotiation"]["sent"][0]["destination"] == "Orange"
     assert context["recent_negotiation"]["sent"][0]["body"] == "I will stay home."
     assert context["safe_fallback"]["orders_json"] == "[]"
@@ -101,6 +118,7 @@ def test_phase_context_prefers_newer_top_level_phase_over_stale_current(tmp_path
         "capital_location_id": "B",
         "latest_current_phase_response": stale_current,
         "allowed_command": stale_current["allowed_command"],
+        "latest_report": stale_current["latest_report"],
         "current_phase": {
             "phase_id": "demo:turn-03:reinforcement",
             "turn": 3,
@@ -118,6 +136,7 @@ def test_phase_context_prefers_newer_top_level_phase_over_stale_current(tmp_path
     assert context["current_phase"]["phase_id"] == "demo:turn-03:reinforcement"
     assert context["current_response_fresh"] is False
     assert context["allowed_command"] is None
+    assert context["latest_report"] is None
     assert context["recommended_next"]["kind"] == "current"
     assert context["safe_fallback"]["safe_to_submit"] is False
     assert "latest current response is stale" in context["warnings"][0]

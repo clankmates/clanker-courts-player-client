@@ -52,7 +52,7 @@ def build_phase_context(artifact_dir: Path, *, now: datetime | None = None) -> d
         "current_phase": current_phase or None,
         "deadline": deadline,
         "allowed_command": allowed_command or None,
-        "latest_report": state.get("latest_report") or latest_current.get("latest_report"),
+        "latest_report": _fresh_latest_report(state, latest_current, current_phase, surface),
         "current_response_fresh": surface["current_response_fresh"],
         "visible_state_digest": visible_state_digest(
             visible_state,
@@ -191,6 +191,8 @@ def recent_negotiation(
             rejected.append(compact)
 
     for command in submitted_commands or []:
+        if command.get("ok") is False:
+            continue
         body = _as_dict(command.get("body"))
         if body.get("type") != "message" or body.get("game_id") != game_id:
             continue
@@ -310,6 +312,28 @@ def _state_current_phase(state: dict[str, Any]) -> dict[str, Any]:
         }.items()
         if isinstance(value, str | int)
     }
+
+
+def _fresh_latest_report(
+    state: dict[str, Any],
+    latest_current: dict[str, Any],
+    current_phase: dict[str, Any],
+    surface: dict[str, Any],
+) -> dict[str, Any] | None:
+    phase_id = current_phase.get("phase_id")
+    if surface["current_response_fresh"]:
+        report = _as_dict(state.get("latest_report")) or _as_dict(
+            latest_current.get("latest_report")
+        )
+    else:
+        report = _as_dict(state.get("latest_report"))
+
+    if not report:
+        return None
+    report_phase_id = report.get("phase_id")
+    if phase_id is None:
+        return report if report_phase_id is None else None
+    return report if report_phase_id == phase_id else None
 
 
 def _fallback_from_state(state: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
