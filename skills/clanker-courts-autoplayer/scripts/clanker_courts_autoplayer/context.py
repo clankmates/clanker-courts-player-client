@@ -19,16 +19,11 @@ def build_phase_context(artifact_dir: Path, *, now: datetime | None = None) -> d
     journal = _read_jsonl(artifact_dir / DECISION_JOURNAL_FILE)
     ledger = _read_jsonl(artifact_dir / DIPLOMACY_LEDGER_FILE)
 
-    latest_current = _as_dict(state.get("latest_current_phase_response"))
-    current_phase = _as_dict(latest_current.get("current_phase")) or _as_dict(
-        state.get("current_phase")
-    )
-    allowed_command = _as_dict(state.get("allowed_command")) or _as_dict(
-        latest_current.get("allowed_command")
-    )
-    visible_state = _as_dict(state.get("visible_state")) or _as_dict(
-        latest_current.get("visible_state")
-    )
+    surface = _current_surface(state)
+    latest_current = surface["latest_current"]
+    current_phase = surface["current_phase"]
+    allowed_command = surface["allowed_command"]
+    visible_state = surface["visible_state"]
     deadline = _deadline_summary(current_phase.get("deadline_at"), now=now)
 
     return {
@@ -58,6 +53,7 @@ def build_phase_context(artifact_dir: Path, *, now: datetime | None = None) -> d
         "deadline": deadline,
         "allowed_command": allowed_command or None,
         "latest_report": state.get("latest_report") or latest_current.get("latest_report"),
+        "current_response_fresh": surface["current_response_fresh"],
         "visible_state_digest": visible_state_digest(
             visible_state,
             player_id=_string_or_none(state.get("player_id")),
@@ -65,6 +61,7 @@ def build_phase_context(artifact_dir: Path, *, now: datetime | None = None) -> d
         ),
         "recent_negotiation": recent_negotiation(
             raw_messages,
+            submitted_commands,
             game_id=_string_or_none(state.get("game_id")),
             server_thread_id=_string_or_none(state.get("server_thread_id")),
             known_players=set(_strings(state.get("players"))),
@@ -72,9 +69,9 @@ def build_phase_context(artifact_dir: Path, *, now: datetime | None = None) -> d
         "recent_decisions": journal[-5:],
         "recent_ledger_notes": ledger[-10:],
         "submitted_command_count": len(submitted_commands),
-        "safe_fallback": _fallback_from_state(state),
-        "recommended_next": _recommended_next(state, current_phase, allowed_command),
-        "warnings": _warnings(state, current_phase, allowed_command),
+        "safe_fallback": _fallback_from_state(state, now=now),
+        "recommended_next": _recommended_next(state, current_phase, allowed_command, deadline),
+        "warnings": _warnings(state, current_phase, allowed_command, surface, deadline),
     }
 
 
@@ -160,6 +157,7 @@ def visible_state_digest(
 
 def recent_negotiation(
     messages: list[dict[str, Any]],
+    submitted_commands: list[dict[str, Any]] | None = None,
     *,
     game_id: str | None,
     server_thread_id: str | None,
@@ -192,6 +190,14 @@ def recent_negotiation(
         else:
             rejected.append(compact)
 
+    for command in submitted_commands or []:
+        body = _as_dict(command.get("body"))
+        if body.get("type") != "message" or body.get("game_id") != game_id:
+            continue
+        if not isinstance(body.get("destination"), str):
+            continue
+        sent.append(_compact_submitted_message(command, body))
+
     return {
         "accepted": accepted[-limit:],
         "rejected": rejected[-limit:],
@@ -199,9 +205,9 @@ def recent_negotiation(
     }
 
 
-def safe_fallback_orders(artifact_dir: Path) -> dict[str, Any]:
+def safe_fallback_orders(artifact_dir: Path, *, now: datetime | None = None) -> dict[str, Any]:
     state = _read_json(artifact_dir / STATE_FILE)
-    return {"ok": True, **_fallback_from_state(state)}
+    return {"ok": True, **_fallback_from_state(state, now=now)}
 
 
 def append_decision_journal(
@@ -255,18 +261,72 @@ def append_ledger_note(
     return record
 
 
-def _fallback_from_state(state: dict[str, Any]) -> dict[str, Any]:
+def _current_surface(state: dict[str, Any]) -> dict[str, Any]:
     latest_current = _as_dict(state.get("latest_current_phase_response"))
-    current_phase = _as_dict(latest_current.get("current_phase")) or _as_dict(
-        state.get("current_phase")
+    latest_phase = _as_dict(latest_current.get("current_phase"))
+    state_phase = _state_current_phase(state)
+    latest_phase_id = latest_phase.get("phase_id")
+    state_phase_id = state_phase.get("phase_id") or state.get("phase_id")
+    current_response_fresh = (
+        bool(latest_current)
+        and latest_phase_id is not None
+        and (state_phase_id is None or latest_phase_id == state_phase_id)
     )
-    allowed_command = _as_dict(state.get("allowed_command")) or _as_dict(
-        latest_current.get("allowed_command")
-    )
+    if latest_current and latest_phase == {} and latest_current.get("current_phase") is None:
+        current_response_fresh = True
+
+    if current_response_fresh:
+        current_phase = latest_phase
+        allowed_command = _as_dict(state.get("allowed_command")) or _as_dict(
+            latest_current.get("allowed_command")
+        )
+        visible_state = _as_dict(state.get("visible_state")) or _as_dict(
+            latest_current.get("visible_state")
+        )
+    else:
+        current_phase = state_phase
+        allowed_command = {}
+        visible_state = _as_dict(state.get("visible_state"))
+
+    return {
+        "latest_current": latest_current,
+        "current_phase": current_phase,
+        "allowed_command": allowed_command,
+        "visible_state": visible_state,
+        "current_response_fresh": current_response_fresh,
+    }
+
+
+def _state_current_phase(state: dict[str, Any]) -> dict[str, Any]:
+    current_phase = _as_dict(state.get("current_phase"))
+    if current_phase:
+        return current_phase
+    return {
+        key: value
+        for key, value in {
+            "phase_id": state.get("phase_id"),
+            "turn": state.get("turn"),
+            "phase": state.get("phase"),
+        }.items()
+        if isinstance(value, str | int)
+    }
+
+
+def _fallback_from_state(state: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+    surface = _current_surface(state)
+    current_phase = surface["current_phase"]
+    allowed_command = surface["allowed_command"]
     phase = current_phase.get("phase") or state.get("phase")
     accepting = allowed_command.get("accepting")
-    safe_to_submit = allowed_command.get("command") == "order_package" and accepting is not False
+    deadline = _deadline_summary(current_phase.get("deadline_at"), now=now)
+    safe_to_submit = (
+        surface["current_response_fresh"]
+        and allowed_command.get("command") == "order_package"
+        and accepting is not False
+    )
     if current_phase.get("status") == "expired":
+        safe_to_submit = False
+    if deadline["expired"] is True:
         safe_to_submit = False
 
     if phase == "reinforcement":
@@ -283,16 +343,23 @@ def _fallback_from_state(state: dict[str, Any]) -> dict[str, Any]:
         "orders": [],
         "orders_json": "[]",
         "reason": reason,
+        "deadline": deadline,
+        "current_response_fresh": surface["current_response_fresh"],
     }
 
 
 def _recommended_next(
-    state: dict[str, Any], current_phase: dict[str, Any], allowed_command: dict[str, Any]
+    state: dict[str, Any],
+    current_phase: dict[str, Any],
+    allowed_command: dict[str, Any],
+    deadline: dict[str, Any],
 ) -> dict[str, Any]:
     if state.get("status") == "ended":
         return {"kind": "stop_or_final_report", "reason": "state is ended"}
     if current_phase.get("status") == "expired":
         return {"kind": "watch", "reason": "current phase is expired"}
+    if deadline["expired"] is True:
+        return {"kind": "current", "reason": "deadline has passed; refresh before acting"}
     if allowed_command.get("command") == "get_after_game_report":
         return {"kind": "final_report", "reason": "server says after-game report is available"}
     if (
@@ -304,13 +371,21 @@ def _recommended_next(
 
 
 def _warnings(
-    state: dict[str, Any], current_phase: dict[str, Any], allowed_command: dict[str, Any]
+    state: dict[str, Any],
+    current_phase: dict[str, Any],
+    allowed_command: dict[str, Any],
+    surface: dict[str, Any],
+    deadline: dict[str, Any],
 ) -> list[str]:
     warnings: list[str] = []
     if not state.get("latest_current_phase_response"):
         warnings.append("run operator current before preparing orders")
+    elif not surface["current_response_fresh"]:
+        warnings.append("latest current response is stale; run operator current before ordering")
     if current_phase.get("status") == "expired":
         warnings.append("do not submit orders for an expired phase")
+    if deadline["expired"] is True:
+        warnings.append("deadline has passed locally; refresh current phase before submitting")
     if allowed_command.get("command") != "order_package" and state.get("status") != "ended":
         warnings.append("allowed command is not order_package")
     if state.get("stale_rejection_recovery"):
@@ -363,6 +438,19 @@ def _compact_message(
         "from": body.get("from"),
         "destination": body.get("destination"),
         "body": body.get("body"),
+    }
+
+
+def _compact_submitted_message(command: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "message_id": None,
+        "thread_id": command.get("thread_id"),
+        "timestamp": command.get("local_timestamp"),
+        "direction": "sent",
+        "from": None,
+        "destination": body.get("destination"),
+        "body": body.get("body"),
+        "ok": command.get("ok"),
     }
 
 
