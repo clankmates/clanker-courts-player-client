@@ -27,6 +27,13 @@ The helper code in this skill only summarizes visible state, provides safe
 default fallback packages, and records local memory. It must not inspect hidden
 state or rank tactical moves for the harness.
 
+For local multi-harness testing, prefer the shared Clanker Courts MCP runtime
+from the operator skill. The runtime is external to the harness and may host
+several player runs in parallel. Each harness receives only its own `run_id` and
+`run_token`, then uses runtime tools for cached context, decisions, negotiation,
+events, and status. Do not use another player's run token or artifact
+directory.
+
 ## Strategy Boundary
 
 The operator skill handles mechanics. This skill chooses strategy from visible
@@ -77,6 +84,11 @@ Useful strategy-neutral helper commands:
 current phase, deadline, allowed command, visible-state digest, screened recent
 negotiation, recent journal entries, and safe fallback guidance. It does not
 choose orders.
+
+When connected to the shared MCP runtime, use `decision_context` instead of
+running `context` directly. `decision_context` is backed by the same local
+artifact files but avoids extra server polling and keeps run isolation enforced
+by the runtime.
 
 ## Rules And Visibility
 
@@ -149,6 +161,18 @@ For each phase:
    mutually survivable final position.
 9. Submit one order package with the operator skill when ready to end the phase.
 10. Record the rationale, promises made, promises received, and unresolved risks.
+
+With the shared MCP runtime, replace steps 1-3 and 9-10 with:
+
+1. Call `decision_context(run_id, run_token)` and read the returned
+   `decision_request_id`, `current_phase`, visible-state digest, recent
+   negotiation, journal, ledger, warnings, and fallback guidance.
+2. Choose orders from visible information only.
+3. Call `submit_decision(run_id, run_token, decision_request_id, phase_id,
+   orders, rationale, ...)`.
+4. Watch `runtime_events(run_id, run_token, since_seq)` and `runtime_status` for
+   `pending_ack`, rejection, fallback, final-report, or next decision request
+   state.
 
 ## Fallbacks
 

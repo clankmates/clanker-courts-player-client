@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -n "${PYTHON:-}" ]]; then
+  export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
+  exec "$PYTHON" -m clanker_courts_player.mcp_server_main "$@"
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+  export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
+  exec python3 -m clanker_courts_player.mcp_server_main "$@"
+fi
+
+echo "python3 is required to run clanker-courts-mcp-server" >&2
+exit 127
