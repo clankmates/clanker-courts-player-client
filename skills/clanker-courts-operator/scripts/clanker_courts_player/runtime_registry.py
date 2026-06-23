@@ -114,11 +114,17 @@ class RunRegistry:
         return [_public_run(run) for run in payload["runs"].values() if isinstance(run, dict)]
 
     def stop_run(self, run_id: str) -> dict[str, Any]:
+        return self._set_run_status(run_id, "stopped")
+
+    def fail_run(self, run_id: str) -> dict[str, Any]:
+        return self._set_run_status(run_id, "failed")
+
+    def _set_run_status(self, run_id: str, status: str) -> dict[str, Any]:
         payload = self._load()
         run = payload["runs"].get(run_id)
         if not isinstance(run, dict):
             raise RegistryError("unknown_run", "run_id was not found")
-        run["status"] = "stopped"
+        run["status"] = status
         run["updated_at"] = _utc_now()
         self._save(payload)
         return _public_run(run)

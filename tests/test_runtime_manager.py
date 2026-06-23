@@ -9,6 +9,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 class FakeClient:
     calls: list[tuple] = []
+    watch_records: list[dict] = []
 
     def send(self, profile, recipient, body):
         self.calls.append(("send", profile, recipient, body))
@@ -17,6 +18,22 @@ class FakeClient:
     def reply(self, profile, thread_id, body):
         self.calls.append(("reply", profile, thread_id, body))
         return {"ok": True, "thread_id": thread_id}
+
+    def iter_watch_messages(self, profile, thread_id, *, once):
+        self.calls.append(("watch", profile, thread_id, once))
+        yield from self.watch_records
+
+
+class FailingJoinClient(FakeClient):
+    def send(self, profile, recipient, body):
+        from clanker_courts_player.clankmates import ClankmatesError
+
+        raise ClankmatesError(
+            command=["clankm"],
+            returncode=1,
+            stdout="",
+            stderr="join failed",
+        )
 
 
 def manager(tmp_path):
@@ -124,6 +141,90 @@ def test_submit_decision_rejects_stale_request_before_reply(tmp_path):
     assert FakeClient.calls == calls_after_join
 
 
+def test_stopped_run_rejects_runtime_actions_with_old_token(tmp_path):
+    FakeClient.calls = []
+    runtime = manager(tmp_path)
+    admin_token = runtime.registry.ensure_admin_token()
+    created = runtime.admin_create_run(
+        admin_token,
+        profile="cc_blue",
+        server="@server",
+        game_id="game-1",
+    )
+
+    assert runtime.runtime_stop(created["run_id"], created["run_token"])["status"] == "stopped"
+
+    try:
+        runtime.send_message(
+            created["run_id"],
+            created["run_token"],
+            destination="Orange",
+            body="hello",
+        )
+    except Exception as exc:
+        assert exc.code == "inactive_run"
+    else:
+        raise AssertionError("stopped run should reject runtime actions")
+
+
+def test_failed_auto_join_marks_run_failed_and_releases_duplicate_guard(tmp_path):
+    runtime = RunManager(tmp_path, client_factory=FailingJoinClient)
+    admin_token = runtime.registry.ensure_admin_token()
+
+    try:
+        runtime.admin_create_run(
+            admin_token,
+            profile="cc_blue",
+            server="@server",
+            game_id="game-1",
+        )
+    except Exception as exc:
+        assert exc.code == "clankm_failed"
+    else:
+        raise AssertionError("failed join should surface an error")
+
+    runs = runtime.admin_list_runs(admin_token)["runs"]
+    assert runs[0]["status"] == "failed"
+    assert not (Path(runs[0]["artifact_dir"]) / ".runtime.lock").exists()
+
+    retry_runtime = manager(tmp_path)
+    retry = retry_runtime.admin_create_run(
+        admin_token,
+        profile="cc_blue",
+        server="@server",
+        game_id="game-1",
+    )
+    assert retry["run_id"].startswith("game-1-cc-blue")
+
+
+def test_runtime_watch_once_applies_server_messages_to_run_state(tmp_path):
+    FakeClient.calls = []
+    current = json.loads((FIXTURES / "get_current_phase_open.json").read_text())
+    FakeClient.watch_records = [
+        {
+            "id": "m-current",
+            "thread_id": "thread-cc_blue",
+            "timestamp": "2026-06-14T18:01:00Z",
+            "body": json.dumps(current),
+        }
+    ]
+    runtime = manager(tmp_path)
+    admin_token = runtime.registry.ensure_admin_token()
+    created = runtime.admin_create_run(
+        admin_token,
+        profile="cc_blue",
+        server="@server",
+        game_id="game-1",
+    )
+
+    result = runtime.runtime_watch_once(created["run_id"], created["run_token"])
+
+    assert result["processed"] == 1
+    state = json.loads((Path(created["artifact_dir"]) / "state.json").read_text())
+    assert state["phase_id"] == "demo:turn-02:movement"
+    assert ("watch", "cc_blue", "thread-cc_blue", True) in FakeClient.calls
+
+
 def test_mcp_tool_surface_includes_admin_and_runtime_tools():
     for name in [
         "admin_create_run",
@@ -131,6 +232,7 @@ def test_mcp_tool_surface_includes_admin_and_runtime_tools():
         "runtime_status",
         "decision_context",
         "submit_decision",
+        "runtime_watch_once",
         "runtime_refresh_current",
     ]:
         assert name in TOOL_NAMES

@@ -55,6 +55,8 @@ admin creates one run per `{game_id, profile, server}` and gives each harness
 only that run's `run_id` and `run_token`. Runtime tools require both values, so
 parallel harnesses cannot read or act on another player run by accident. Keep
 one artifact directory per player run; `.runs/` is ignored by git.
+Harnesses use `runtime_watch_once` to apply server messages, `decision_context`
+to read cached position state, and `submit_decision` to send orders.
 
 When installing only the skills without the full repo, use the canonical public
 repository for full rules and protocol details:

@@ -19,6 +19,7 @@ TOOL_NAMES = [
     "send_message",
     "record_ledger_note",
     "runtime_events",
+    "runtime_watch_once",
     "runtime_refresh_current",
     "runtime_stop",
 ]

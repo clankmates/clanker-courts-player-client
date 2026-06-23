@@ -164,13 +164,15 @@ For each phase:
 
 With the shared MCP runtime, replace steps 1-3 and 9-10 with:
 
-1. Call `decision_context(run_id, run_token)` and read the returned
+1. Call `runtime_watch_once(run_id, run_token)` to apply server messages from
+   the saved thread.
+2. Call `decision_context(run_id, run_token)` and read the returned
    `decision_request_id`, `current_phase`, visible-state digest, recent
    negotiation, journal, ledger, warnings, and fallback guidance.
-2. Choose orders from visible information only.
-3. Call `submit_decision(run_id, run_token, decision_request_id, phase_id,
+3. Choose orders from visible information only.
+4. Call `submit_decision(run_id, run_token, decision_request_id, phase_id,
    orders, rationale, ...)`.
-4. Watch `runtime_events(run_id, run_token, since_seq)` and `runtime_status` for
+5. Watch `runtime_events(run_id, run_token, since_seq)` and `runtime_status` for
    `pending_ack`, rejection, fallback, final-report, or next decision request
    state.
 

@@ -16,6 +16,7 @@ from clanker_courts_autoplayer.context import (
 )
 
 from .clankmates import ClankmatesClient, ClankmatesError
+from .messages import decode_clankmates_message
 from .runtime_registry import RegistryError, RunRegistry
 from .state_store import StateStore
 
@@ -49,7 +50,12 @@ class RunManager:
         credentials = self.registry.create_run(**kwargs)
         run = self.registry.get_run(credentials.run_id)
         runtime = self._runtime(credentials.run_id, run)
-        runtime.start()
+        try:
+            runtime.start()
+        except Exception:
+            runtime.stop()
+            self.registry.fail_run(credentials.run_id)
+            raise
         return {
             "ok": True,
             "run_id": credentials.run_id,
@@ -132,6 +138,9 @@ class RunManager:
     ) -> dict[str, Any]:
         return self._authorized_runtime(run_id, run_token).events(since_seq=since_seq, limit=limit)
 
+    def runtime_watch_once(self, run_id: str, run_token: str) -> dict[str, Any]:
+        return self._authorized_runtime(run_id, run_token).watch_once()
+
     def runtime_refresh_current(
         self, run_id: str, run_token: str, *, force: bool = False
     ) -> dict[str, Any]:
@@ -145,6 +154,8 @@ class RunManager:
 
     def _authorized_runtime(self, run_id: str, run_token: str) -> PlayerRuntime:
         run = self.registry.get_run(run_id, run_token)
+        if run.get("status") != "active":
+            raise RuntimeErrorPayload("inactive_run", "run is not active")
         return self._runtime(run_id, run)
 
     def _runtime(self, run_id: str, run: dict[str, Any]) -> PlayerRuntime:
@@ -297,6 +308,40 @@ class PlayerRuntime:
             row for row in rows if isinstance(row.get("seq"), int) and row["seq"] > since_seq
         ]
         return {"ok": True, "run_id": self.run_id, "events": selected[:limit]}
+
+    def watch_once(self) -> dict[str, Any]:
+        with self._lock:
+            state = self.store.load()
+            records_seen = 0
+            processed = 0
+            duplicates_skipped = 0
+            for record in self.client_factory().iter_watch_messages(
+                state["profile"],
+                state["server_thread_id"],
+                once=True,
+            ):
+                records_seen += 1
+                message = decode_clankmates_message(record)
+                state = self.store.load()
+                result = self.store.apply_incremental_messages(state, [message])
+                processed += result["processed"]
+                duplicates_skipped += result["duplicates_skipped"]
+            self._append_event(
+                "watch_cycle",
+                {
+                    "records_seen": records_seen,
+                    "processed": processed,
+                    "duplicates_skipped": duplicates_skipped,
+                },
+            )
+            return {
+                "ok": True,
+                "run_id": self.run_id,
+                "records_seen": records_seen,
+                "processed": processed,
+                "duplicates_skipped": duplicates_skipped,
+                "no_messages": records_seen == 0 or processed == 0,
+            }
 
     def refresh_current(self, *, force: bool = False) -> dict[str, Any]:
         with self._lock:

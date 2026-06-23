@@ -163,9 +163,9 @@ All post-join commands use only `--artifact-dir`. The helper loads the saved
 
 When using the shared MCP runtime, harnesses should not call these low-level CLI
 commands for normal play. Use MCP tools such as `decision_context`,
-`submit_decision`, `send_message`, `runtime_events`, and `runtime_status`.
-Those tools read cached local state by default and serialize outbound commands
-for the target run.
+`runtime_watch_once`, `submit_decision`, `send_message`, `runtime_events`, and
+`runtime_status`. Those tools read cached local state by default and serialize
+outbound commands for the target run.
 
 Confirm readiness after a `ready_check`:
 
