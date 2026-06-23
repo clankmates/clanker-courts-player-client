@@ -225,6 +225,25 @@ def test_runtime_watch_once_applies_server_messages_to_run_state(tmp_path):
     assert ("watch", "cc_blue", "thread-cc_blue", True) in FakeClient.calls
 
 
+def test_second_manager_cannot_control_active_run_without_owning_lock(tmp_path):
+    first = manager(tmp_path)
+    admin_token = first.registry.ensure_admin_token()
+    created = first.admin_create_run(
+        admin_token,
+        profile="cc_blue",
+        server="@server",
+        game_id="game-1",
+    )
+    second = manager(tmp_path)
+
+    try:
+        second.runtime_status(created["run_id"], created["run_token"])
+    except Exception as exc:
+        assert exc.code == "run_locked"
+    else:
+        raise AssertionError("second manager should not control a locked active run")
+
+
 def test_mcp_tool_surface_includes_admin_and_runtime_tools():
     for name in [
         "admin_create_run",

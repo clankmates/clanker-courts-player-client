@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -42,6 +43,7 @@ class RunManager:
     ) -> None:
         self.registry = RunRegistry(runs_root)
         self.client_factory = client_factory or ClankmatesClient
+        self.server_instance_id = secrets.token_hex(16)
         self._runtimes: dict[str, PlayerRuntime] = {}
         self._lock = threading.RLock()
 
@@ -49,7 +51,7 @@ class RunManager:
         self.registry.verify_admin(admin_token)
         credentials = self.registry.create_run(**kwargs)
         run = self.registry.get_run(credentials.run_id)
-        runtime = self._runtime(credentials.run_id, run)
+        runtime = self._runtime(credentials.run_id, run, verify_lock=False)
         try:
             runtime.start()
         except Exception:
@@ -156,13 +158,22 @@ class RunManager:
         run = self.registry.get_run(run_id, run_token)
         if run.get("status") != "active":
             raise RuntimeErrorPayload("inactive_run", "run is not active")
-        return self._runtime(run_id, run)
+        return self._runtime(run_id, run, verify_lock=True)
 
-    def _runtime(self, run_id: str, run: dict[str, Any]) -> PlayerRuntime:
+    def _runtime(
+        self, run_id: str, run: dict[str, Any], *, verify_lock: bool
+    ) -> PlayerRuntime:
         with self._lock:
             runtime = self._runtimes.get(run_id)
             if runtime is None:
-                runtime = PlayerRuntime(run_id, run, client_factory=self.client_factory)
+                runtime = PlayerRuntime(
+                    run_id,
+                    run,
+                    client_factory=self.client_factory,
+                    server_instance_id=self.server_instance_id,
+                )
+                if verify_lock and run.get("status") == "active":
+                    runtime.verify_lock_owner()
                 self._runtimes[run_id] = runtime
             return runtime
 
@@ -174,9 +185,11 @@ class PlayerRuntime:
         run: dict[str, Any],
         *,
         client_factory: ClientFactory,
+        server_instance_id: str,
     ) -> None:
         self.run_id = run_id
         self.run = run
+        self.server_instance_id = server_instance_id
         self.artifact_dir = Path(str(run["artifact_dir"]))
         self.store = StateStore(self.artifact_dir / "state.json")
         self.events_path = self.artifact_dir / "runtime_events.jsonl"
@@ -432,7 +445,23 @@ class PlayerRuntime:
                 "run_locked",
                 "artifact_dir already has an active runtime lock",
             )
-        self.lock_path.write_text(str(os.getpid()), encoding="utf-8")
+        self.lock_path.write_text(self._lock_owner(), encoding="utf-8")
+
+    def verify_lock_owner(self) -> None:
+        if not self.lock_path.exists():
+            raise RuntimeErrorPayload(
+                "run_lock_missing",
+                "active run is not owned by this MCP server process",
+            )
+        owner = self.lock_path.read_text(encoding="utf-8").strip()
+        if owner != self._lock_owner():
+            raise RuntimeErrorPayload(
+                "run_locked",
+                "active run is owned by another MCP server process",
+            )
+
+    def _lock_owner(self) -> str:
+        return f"{os.getpid()}:{self.server_instance_id}"
 
     def _append_event(self, event: str, payload: dict[str, Any]) -> None:
         rows = _read_jsonl(self.events_path)
