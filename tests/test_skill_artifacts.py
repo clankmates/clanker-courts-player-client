@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -129,6 +130,51 @@ def test_mcp_server_local_wrapper_runs_without_global_install():
 
     result = subprocess.run(
         [str(skill_dir / "scripts/clanker-courts-mcp-server"), "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    assert "serve" in result.stdout
+
+
+def test_mcp_server_wrapper_runs_from_copied_skills(tmp_path):
+    skills_root = tmp_path / "skills"
+    operator_copy = skills_root / "clanker-courts-operator"
+    autoplayer_copy = skills_root / "clanker-courts-autoplayer"
+    shutil.copytree(ROOT / "skills/clanker-courts-operator", operator_copy)
+    shutil.copytree(ROOT / "skills/clanker-courts-autoplayer", autoplayer_copy)
+
+    env = {
+        **os.environ,
+        "PYTHON": sys.executable,
+        "PYTHONPATH": "",
+    }
+    result = subprocess.run(
+        [str(operator_copy / "scripts/clanker-courts-mcp-server"), "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+        env=env,
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0
+    assert "serve" in result.stdout
+
+
+def test_operator_module_entrypoint_runs_mcp_help():
+    operator_scripts = ROOT / "skills/clanker-courts-operator/scripts"
+    autoplayer_scripts = ROOT / "skills/clanker-courts-autoplayer/scripts"
+    env = {
+        **os.environ,
+        "PYTHONPATH": f"{operator_scripts}:{autoplayer_scripts}",
+    }
+
+    result = subprocess.run(
+        [sys.executable, "-m", "clanker_courts_player", "--help"],
         check=False,
         text=True,
         capture_output=True,
