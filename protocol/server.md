@@ -164,7 +164,7 @@ Open phase response:
 If an open phase's deadline has passed, the server reports that same phase with
 `current_phase.status` set to `expired` and
 `allowed_command.accepting` set to `false`. This read does not advance the game;
-clients should wait for the next report or freshen/watch messages rather than
+clients should wait for the next report or watch/apply new messages rather than
 submitting more orders for the expired phase.
 
 When the game has ended, `current_phase` is `null` and `allowed_command` points

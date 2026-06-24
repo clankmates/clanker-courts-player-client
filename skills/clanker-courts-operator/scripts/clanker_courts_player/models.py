@@ -316,8 +316,8 @@ class MessageRejected(ProtocolModel):
 class PeerDiplomacyMessage(ProtocolModel):
     """A direct player-to-player Clankmates diplomacy message.
 
-    Retained for historical archives and explicit fallback tooling. Normal
-    current games use server-brokered `message` traffic instead.
+    Retained only so archived direct-diplomacy payloads remain parseable.
+    Normal current games use server-brokered `message` traffic instead.
     """
 
     type: Literal["diplomacy_message"]
