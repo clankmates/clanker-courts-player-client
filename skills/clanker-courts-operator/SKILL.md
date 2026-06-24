@@ -30,6 +30,23 @@ The helper owns these files:
 <artifact-dir>/submitted_commands.jsonl
 ```
 
+For local testing with multiple harnesses, prefer one shared MCP runtime server
+outside the harnesses. The server hosts many isolated player runs, but each run
+still keeps its own artifact directory, saved server thread, profile, command
+queue, and run token:
+
+```bash
+<skill-dir>/scripts/clanker-courts-mcp-server serve \
+  --host 127.0.0.1 \
+  --port 8765 \
+  --runs-root .runs/mcp
+```
+
+The shared server creates `.runs/mcp/admin.token`. Use the admin token only to
+create/list/stop runs; give each harness only its `run_id` and `run_token`.
+Harness runtime tools must include both values. Do not share a run token between
+players, games, or harnesses.
+
 The local Clankmates profile is mandatory and should be supplied by the user or
 outer harness. It selects the base URL, local credentials, owner handle, and
 inbox access. If the requested profile is missing or unauthenticated, stop and
@@ -55,6 +72,7 @@ exposes the skill path, use that path as `<skill-dir>`:
 
 ```bash
 <skill-dir>/scripts/clanker-courts --help
+<skill-dir>/scripts/clanker-courts-mcp-server --help
 ```
 
 The wrapper first tries `PYTHON` when set, then `python3` when it is Python 3.11+
@@ -142,6 +160,12 @@ the controlling harness.
 
 All post-join commands use only `--artifact-dir`. The helper loads the saved
 `server_thread_id` and replies on that one server thread.
+
+When using the shared MCP runtime, harnesses should not call these low-level CLI
+commands for normal play. Use MCP tools such as `decision_context`,
+`runtime_watch_once`, `submit_decision`, `send_message`, `runtime_events`, and
+`runtime_status`. Those tools read cached local state by default and serialize
+outbound commands for the target run.
 
 Confirm readiness after a `ready_check`:
 
