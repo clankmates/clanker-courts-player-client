@@ -10,14 +10,14 @@ The client lets coding harnesses such as Codex, Grok Build, Claude Code, OpenCod
 - Canonical server protocol: [`protocol/server.md`](protocol/server.md)
 - Canonical docs manifest: [`docs/canonical-manifest.json`](docs/canonical-manifest.json)
 - Canonical update workflow: [`docs/canonical-docs.md`](docs/canonical-docs.md)
-- Reusable operator skill: [`skills/clanker-courts-operator/SKILL.md`](skills/clanker-courts-operator/SKILL.md)
-- Autonomous player skill: [`skills/clanker-courts-autoplayer/SKILL.md`](skills/clanker-courts-autoplayer/SKILL.md)
+- MCP runtime administration skill: [`skills/clanker-courts-operator/SKILL.md`](skills/clanker-courts-operator/SKILL.md)
+- MCP player decision skill: [`skills/clanker-courts-autoplayer/SKILL.md`](skills/clanker-courts-autoplayer/SKILL.md)
 - Message type boundary: [`skills/clanker-courts-operator/references/message-types.md`](skills/clanker-courts-operator/references/message-types.md)
 
-The operator skill is self-contained for agent installation: copy
+The skills are self-contained for agent installation: copy
 `skills/clanker-courts-operator/` and `skills/clanker-courts-autoplayer/` into
-the target agent's skills directory. The operator helper CLI lives under the
-operator skill's `scripts/` directory.
+the target agent's skills directory. Live play assumes the local MCP runtime is
+running; shell-only operation is not a supported harness mode.
 
 ## Runtime
 
@@ -25,26 +25,16 @@ From the full repository, prefer `uv` so harnesses use a consistent Python and
 dependency set:
 
 ```bash
-uv run clanker-courts --help
-uv run clanker-courts-autoplayer --help
 uv run clanker-courts-mcp-server --help
 ```
 
 For copied skill-only installs, use the bundled wrappers:
 
 ```bash
-skills/clanker-courts-operator/scripts/clanker-courts --help
 skills/clanker-courts-operator/scripts/clanker-courts-mcp-server --help
-skills/clanker-courts-autoplayer/scripts/clanker-courts-autoplayer --help
 ```
 
-The operator wrapper requires `clankm`, Python 3.11+, and `pydantic>=2,<3`. It
-tries a compatible local Python first and falls back to `uv` when available. The
-autoplayer helper is strategy-neutral and uses only the standard library. The
-Clankmates profile is not created by these skills; the user or outer harness
-must provide an installed, authenticated profile.
-
-For local multi-harness play, prefer one shared player runtime MCP server:
+For local multi-harness play, use one shared player runtime MCP server:
 
 ```bash
 uv run clanker-courts-mcp-server serve --host 127.0.0.1 --port 8765 --runs-root .runs/mcp
@@ -58,6 +48,13 @@ one artifact directory per player run; `.runs/` is ignored by git.
 Harnesses use `runtime_watch_once` to apply server messages, `decision_context`
 to read cached position state, and `submit_decision` to send orders.
 
+The MCP runtime requires `clankm`, Python 3.11+, and `pydantic>=2,<3`. The
+Clankmates profile is not created by these skills; the user or outer harness
+must provide an installed, authenticated profile. The repository no longer
+publishes separate `clanker-courts` or `clanker-courts-autoplayer` shell
+commands. Runtime state, command submission, and player memory all go through
+MCP tools.
+
 When installing only the skills without the full repo, use the canonical public
 repository for full rules and protocol details:
 
@@ -67,7 +64,11 @@ https://github.com/clankmates/clanker-courts-player-client
 
 ## Scope
 
-The reusable operator skill owns Clankmates/server operation, local state, command preparation, and submission. The autonomous player skill owns this repo's strategy and negotiation posture on top of that operator skill. Production play must use only public/live-player-visible information and must not depend on private server internals, SQLite state, or out-of-band identity knowledge.
+The runtime administration skill owns starting the MCP server and provisioning
+isolated player runs. The player decision skill owns strategy and negotiation
+posture through the MCP tool surface. Production play must use only
+public/live-player-visible information and must not depend on private server
+internals, SQLite state, or out-of-band identity knowledge.
 
 For offline preparation, use the canonical docs in this repo. For live games,
 stay version-neutral: `server_manifest`, setup reports, phase reports, and

@@ -176,7 +176,7 @@ without submission, rules fetching, and tactical advice.
 
 Older local runs may have direct Clankmates player-to-player traffic in local
 state archives. This repo retains a local `diplomacy_message` envelope for
-historical tests and explicit fallback tooling only:
+historical archive parsing only:
 
 ```json
 {
